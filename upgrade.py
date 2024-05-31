@@ -8,6 +8,7 @@ from pathlib import Path
 from tqdm import tqdm
 import os
 
+
 def inP(p0: np.ndarray, px: np.ndarray, gamma):
     return min(p0/px) >= gamma
 
@@ -31,6 +32,15 @@ def generate_uniform_distributions(P0: np.ndarray, num_gen=100, gamma2=0.8):
     kmeans.fit(w @ boundaries)
     res = kmeans.cluster_centers_
     return res
+
+
+def multivariate_sampling(data: pd.DataFrame, variables: list, sample_dis: dict, instance_index):
+    remains = deepcopy(variables)
+    while len(remains):
+        sampling_var = remains.pop(0)
+        distribution = sample_dis[sampling_var][instance_index]
+        _, all_index = univariate_sampling(data, sampling_var, {i: distribution[i] for i in range(distribution.shape[0])})
+    return all_index
 
 
 def marginal_prob(df: pd.DataFrame, variables: list):
@@ -77,45 +87,38 @@ def univariate_sampling(data: pd.DataFrame, variable: str, sample_dis: dict):
     res = data.iloc[all_index].reset_index()
     return res.drop(columns=['index']), all_index
 
-def multivariate_sampling(data: pd.DataFrame, variables: list, sample_dis: dict, instance_index):
-    remains = deepcopy(variables)
-    while len(remains):
-        sampling_var = remains.pop(0)
-        distribution = sample_dis[sampling_var][instance_index]
-        data, all_index = univariate_sampling(data, sampling_var, {i: distribution[i] for i in range(distribution.shape[0])})
-    return data, all_index
 
-# def GSMB(data: pd.DataFrame, confidence=0.01):
-#     markov_blankets = {}
-#     chisq_obj = CIT(data, "chisq") # construct a CIT instance with data and method name
-#     all_var_idx = [i for i in range(len(data.columns))]
+def GSMB(data: pd.DataFrame, confidence=0.01):
+    markov_blankets = {}
+    chisq_obj = CIT(data, "chisq") # construct a CIT instance with data and method name
+    all_var_idx = [i for i in range(len(data.columns))]
 
-#     for X in all_var_idx:
-#         S = []
-#         # X = 6
-#         prev_length = 0
-#         count = 0
-#         while True:
-#             count += 1
-#             # print("==============New cycle==================")
-#             for Y in list(set(all_var_idx) - set(S) - set([X])):
-#                 if Y != X:
-#                     pval = chisq_obj(X, Y, S) # type:ignore
-#                     if pval <= confidence: # type:ignore
-#                         S.append(Y)
+    for X in all_var_idx:
+        S = []
+        # X = 6
+        prev_length = 0
+        count = 0
+        while True:
+            count += 1
+            # print("==============New cycle==================")
+            for Y in list(set(all_var_idx) - set(S) - set([X])):
+                if Y != X:
+                    pval = chisq_obj(X, Y, S) # type:ignore
+                    if pval <= confidence: # type:ignore
+                        S.append(Y)
             
-#             for Y in deepcopy(S):
-#                 pval = chisq_obj(X, Y, list(set(S) - set([Y]))) # type:ignore
-#                 if pval > confidence: # type:ignore
-#                     S.remove(Y)
+            for Y in deepcopy(S):
+                pval = chisq_obj(X, Y, list(set(S) - set([Y]))) # type:ignore
+                if pval > confidence: # type:ignore
+                    S.remove(Y)
             
-#             if (len(S) - prev_length == 0) or (count >= 10):
-#                 break
-#             else:
-#                 prev_length = len(S)
+            if (len(S) - prev_length == 0) or (count >= 10):
+                break
+            else:
+                prev_length = len(S)
 
-#         markov_blankets[data.columns[X]] = [data.columns[i] for i in S]
-#     return markov_blankets
+        markov_blankets[data.columns[X]] = [data.columns[i] for i in S]
+    return markov_blankets
 
 
 def compute_mll(summary_with_ch: pd.DataFrame, potential_parent: list, num_env):
@@ -172,3 +175,41 @@ def load_data(options):
     merged_df = pd.concat(silos, axis=0)
     print("Loading data done! -- Full data:", len(merged_df))
     return merged_df, all_vars, groundtruth
+
+
+def true_markov_blanket(adj_matrix, var_idx):
+    parents = np.where(adj_matrix[:, var_idx])[0]
+    children = np.where(adj_matrix[var_idx])[0]
+    
+    spouses = set()
+    for c in children:
+        for sp in np.where(adj_matrix[:, c])[0]:
+            spouses.add(sp)
+    
+    spouses = list(spouses)
+    return parents, children, spouses
+
+
+def to_list(all_vars, mb_idx_list):
+    return [all_vars[i] for i in mb_idx_list]
+
+
+def unfold(input):
+    """
+    Arguments:
+        input: [var, var, ..., [var, ...], [var, ...]]
+
+    that has a number of non-list element and a number of list element
+    """
+    cut_index = 0
+    while cut_index < len(input):
+        cut_index += 1
+        if isinstance(input[cut_index], list):
+            break
+
+    out = []
+    for i in range(cut_index, len(input)):
+        out.append([*input[:cut_index], *input[i]])
+    return out
+
+
