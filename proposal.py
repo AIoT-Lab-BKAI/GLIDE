@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 import os
-from tqdm import tqdm
 from itertools import combinations
 from plot_utils import true_edge, spur_edge, fals_edge, miss_edge
 import time
@@ -50,6 +49,38 @@ def load_data(options):
     merged_df = merged_df.reindex(sorted(merged_df.columns, key=lambda item: int(item[1:])), axis=1)
     all_vars = list(merged_df.columns)
     return merged_df, all_vars, groundtruth
+
+
+def find_basis(df: pd.DataFrame, all_vars: list):
+    """
+    Find the maximum set of inter-independent variables
+    given the data and the list of variables
+    Args:
+        df: data
+        all_vars: set of variables of interest
+    """
+    data = df[all_vars]
+    confidence = 0.01
+    connectivity = {var: [] for var in all_vars}
+    chisq_obj = CIT(data, "chisq")
+
+    for X in connectivity.keys():
+        other_vars = list(set(all_vars) - set(connectivity[X]) - set([X]))
+        for Y in other_vars:
+            pval = chisq_obj(all_vars.index(X), all_vars.index(Y), []) # type: ignore
+            if pval <= confidence: # type: ignore
+                connectivity[X] = list(set(connectivity[X]) | set([Y]))
+                connectivity[Y] = list(set(connectivity[Y]) | set([X]))
+    
+    basis = []
+    ordering = sorted(all_vars, key=lambda item: len(connectivity[item]), reverse=False)
+    while len(ordering):
+        x = ordering.pop(0)
+        discard_vars = connectivity[x]
+        ordering = sorted(list(set(ordering) - set(discard_vars)), 
+                        key=lambda item: len(list(set(connectivity[item]) - set(discard_vars))), reverse=False)
+        basis.append(x)
+    return basis
 
 
 def GSMB(df: pd.DataFrame, indexes, confidence=0.01):
@@ -204,7 +235,7 @@ def individual_causal_search_backward(var, silos_index):
         variance, _ = compute_weighted_variance_viaindexesv2(silos_index, var, [mb_var])
         record[tuple([mb_var])] = variance
     return {var: record}
-      
+
 
 def individual_causal_search_forward(var, potential_parents, silos_index):
     buffers = {}
@@ -253,11 +284,11 @@ def compute_mll(summary_with_ch: pd.DataFrame, potential_parent: list, num_env):
 
 def get_potential_parents(markov_blankets):
     recursive_outputs = {}
-    for anchor_var in tqdm(markov_blankets.keys()):
+    for anchor_var in markov_blankets.keys():
         recursive_outputs[anchor_var] = recursive_conn(markov_blankets, deepcopy(markov_blankets[anchor_var]))
 
     potential_parents = {}
-    for anchor_var in tqdm(markov_blankets.keys(), leave=False):
+    for anchor_var in markov_blankets.keys():
         recursive_output = recursive_outputs[anchor_var]
         final_output = set()
         for i in range(len(recursive_output)):
@@ -419,8 +450,7 @@ if __name__ == "__main__":
     elif (mode.upper() == "AL") or (mode.upper() == "AL-RE"):
         basis_index = [i for i in range(groundtruth.shape[0]) if np.sum(groundtruth[i]) == 0]
         leaves = np.array(all_vars)[np.array(basis_index)].tolist()
-        # TODO: write codes to eliminate leaves that are dependent!
-        
+        leaves = find_basis(df, leaves)
         adj_mtx = procedure_for_leaves(leaves)
         
         if mode.upper() == "AL-RE":
