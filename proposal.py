@@ -44,7 +44,7 @@ def load_data(options):
             filename = os.path.join(folderpath, file)
             silo_data = pd.read_csv(filename)
             silos.append(silo_data)
-            print("Loaded file:", filename, end="\t")
+            # print("Loaded file:", filename)
 
     merged_df = pd.concat(silos[:-1], axis=0)
     merged_df = merged_df.reindex(sorted(merged_df.columns, key=lambda item: int(item[1:])), axis=1)
@@ -198,6 +198,25 @@ def unfold(input):
     return out
 
 
+def individual_causal_search_backward(var, silos_index):
+    record = {}
+    for mb_var in markov_blankets[var]:
+        variance, _ = compute_weighted_variance_viaindexesv2(silos_index, var, [mb_var])
+        record[tuple([mb_var])] = variance
+    return {var: record}
+      
+
+def individual_causal_search_forward(var, potential_parents, silos_index):
+    buffers = {}
+    for group in sorted(potential_parents[var], key=lambda item: len(item)):
+        for l in range(1, min(len(group)+1, options['capsize'])).__reversed__():
+            for comb in combinations(group, l):
+                comb = tuple(sorted(comb))
+                if comb not in buffers.keys():
+                    variance, _ = compute_weighted_variance_viaindexesv2(silos_index, var, list(comb))
+                    buffers[comb] = variance
+    return {var: buffers}
+  
 # Function to execute F in parallel
 def execute_in_parallel(func, args_list: List[Tuple]):
     with Pool() as pool:
@@ -352,23 +371,12 @@ if __name__ == "__main__":
 
     def procedure_for_sources(sources):
         potential_parents = get_potential_parents(markov_blankets)
-        def individual_causal_search(var, silos_index):
-            buffers = {}
-            for group in sorted(potential_parents[var], key=lambda item: len(item)):
-                for l in range(1, min(len(group)+1, options['capsize'])).__reversed__():
-                    for comb in combinations(group, l):
-                        comb = tuple(sorted(comb))
-                        if comb not in buffers.keys():
-                            variance, _ = compute_weighted_variance_viaindexesv2(silos_index, var, list(comb))
-                            buffers[comb] = variance
-            return {var: buffers}
-                
         sample_dis = {x: generate_uniform_distributions(P0=marginal_prob(df, [x]),
                                                         num_gen=options['num_env'], 
                                                         gamma2=np.power(options['gamma2'], 1./len(sources))) for x in sources}
         silos_index = [multivariate_sampling(df, sources, sample_dis, i) for i in range(options['num_env'])]
-        inputs = [(var, silos_index) for var in markov_blankets.keys()]
-        outputs = execute_in_parallel(individual_causal_search, inputs)
+        inputs = [(var, potential_parents, silos_index) for var in markov_blankets.keys()]
+        outputs = execute_in_parallel(individual_causal_search_forward, inputs)
 
         results = tuple()
         for out_dict in outputs:
@@ -382,19 +390,12 @@ if __name__ == "__main__":
         return adj_mtx
 
     def procedure_for_leaves(leaves):
-        def individual_causal_search(var, silos_index):
-            record = {}
-            for mb_var in markov_blankets[var]:
-                variance, _ = compute_weighted_variance_viaindexesv2(silos_index, var, [mb_var])
-                record[tuple([mb_var])] = variance
-            return {var: record}
-        
         sample_dis = {x: generate_uniform_distributions(P0=marginal_prob(df, [x]),
                                                 num_gen=options['num_env'], 
                                                 gamma2=np.power(options['gamma2'], 1./len(leaves))) for x in leaves}
         silos_index = [multivariate_sampling(df, leaves, sample_dis, i) for i in range(options['num_env'])]
         inputs = [(var, silos_index) for var in markov_blankets.keys()]
-        outputs = execute_in_parallel(individual_causal_search, inputs)
+        outputs = execute_in_parallel(individual_causal_search_backward, inputs)
 
         results = tuple()
         for out_dict in outputs:
@@ -418,6 +419,8 @@ if __name__ == "__main__":
     elif (mode.upper() == "AL") or (mode.upper() == "AL-RE"):
         basis_index = [i for i in range(groundtruth.shape[0]) if np.sum(groundtruth[i]) == 0]
         leaves = np.array(all_vars)[np.array(basis_index)].tolist()
+        # TODO: write codes to eliminate leaves that are dependent!
+        
         adj_mtx = procedure_for_leaves(leaves)
         
         if mode.upper() == "AL-RE":
