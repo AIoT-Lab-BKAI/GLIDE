@@ -125,6 +125,35 @@ def GSMB(df: pd.DataFrame, indexes, confidence=0.01):
     return markov_blankets
 
 
+def removes_irrelevant(df, var, plausible_set, confidence=0.01):
+    subdata = df[[var, *plausible_set]]
+    all_var = list(subdata.columns)
+    all_var_idx = [i for i in range(len(all_var))]
+    chisq_obj = CIT(subdata, 'chisq')
+    
+    X = all_var.index(var)
+    S = []
+    prev_length = 0
+    count = 0
+    while True:
+        count += 1
+        for Y in deepcopy(S):
+            pval = chisq_obj(X, Y, list(set(S) - set([Y]))) # type:ignore
+            if pval > confidence: # type:ignore
+                S.remove(Y)
+        for Y in list(set(all_var_idx) - set(S) - set([X])):
+            if Y != X:
+                pval = chisq_obj(X, Y, S) # type:ignore
+                if pval <= confidence: # type:ignore
+                    S.append(Y)
+        if (len(S) - prev_length == 0) or (count > 10):
+            break
+        else:
+            prev_length = len(S)
+        
+    return [all_var[i] for i in S]
+
+
 def true_markov_blanket(adj_matrix, var_idx):
     parents = np.where(adj_matrix[:, var_idx])[0].tolist()
     children = np.where(adj_matrix[var_idx])[0].tolist()
@@ -240,9 +269,9 @@ def individual_causal_search_backward(var, silos_index):
     return {var: record}
 
 
-def individual_causal_search_forward(var, potential_parents, silos_index):
+def individual_causal_search_forward(var, potential_parents_for_var, silos_index):
     buffers = {}
-    for group in sorted(potential_parents[var], key=lambda item: len(item)):
+    for group in sorted(potential_parents_for_var, key=lambda item: len(item)):
         for l in range(1, min(len(group)+1, options['capsize'])).__reversed__():
             for comb in combinations(group, l):
                 comb = tuple(sorted(comb))
@@ -412,7 +441,7 @@ if __name__ == "__main__":
                                                             num_gen=options['num_env'], 
                                                             gamma2=np.power(options['gamma2'], 1./len(sources))) for x in sources}
             silos_index = [multivariate_sampling(df, sources, sample_dis, i) for i in range(options['num_env'])]
-            inputs = [(var, potential_parents, silos_index) for var in markov_blankets.keys()]
+            inputs = [(var, removes_irrelevant(df, var, potential_parents[var], options['confidence']), silos_index) for var in markov_blankets.keys()]
             outputs = execute_in_parallel(individual_causal_search_forward, inputs)
 
             results = tuple()
