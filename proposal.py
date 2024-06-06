@@ -11,6 +11,7 @@ from copy import deepcopy
 from sklearn.cluster import KMeans
 from multiprocessing import Pool
 from typing import List, Tuple
+from random import shuffle
 
 
 def read_opts():
@@ -23,8 +24,9 @@ def read_opts():
     parser.add_argument("--hardcap", type=float, default='0.001')
     parser.add_argument("--gamma2", type=float, default='0.5')
     parser.add_argument("--num_env", type=int, default=10)
-    parser.add_argument("--capsize", type=int, default=8)
-    parser.add_argument("--mode", type=str, choices=['aS', 'aL', 'aL-Re'], default='aS')
+    parser.add_argument("--capsize", type=int, default=4)
+    parser.add_argument("--mode", type=str, choices=['aS', 'aL', 'aL-Re', 'n'], default='aS')
+    parser.add_argument("--exp_repeat", type=int, default=1)
     options = vars(parser.parse_args())
     return options
 
@@ -51,7 +53,7 @@ def load_data(options):
     return merged_df, all_vars, groundtruth
 
 
-def find_basis(df: pd.DataFrame, all_vars: list):
+def find_basis(df: pd.DataFrame, all_vars: list, confidence=0.01):
     """
     Find the maximum set of inter-independent variables
     given the data and the list of variables
@@ -60,7 +62,6 @@ def find_basis(df: pd.DataFrame, all_vars: list):
         all_vars: set of variables of interest
     """
     data = df[all_vars]
-    confidence = 0.01
     connectivity = {var: [] for var in all_vars}
     chisq_obj = CIT(data, "chisq")
 
@@ -73,7 +74,9 @@ def find_basis(df: pd.DataFrame, all_vars: list):
                 connectivity[Y] = list(set(connectivity[Y]) | set([X]))
     
     basis = []
-    ordering = sorted(all_vars, key=lambda item: len(connectivity[item]), reverse=False)
+    random_vars = deepcopy(all_vars)
+    shuffle(random_vars)
+    ordering = sorted(random_vars, key=lambda item: len(connectivity[item]), reverse=False)
     while len(ordering):
         x = ordering.pop(0)
         discard_vars = connectivity[x]
@@ -294,7 +297,7 @@ def get_potential_parents(markov_blankets):
         for i in range(len(recursive_output)):
             test_case = deepcopy(recursive_output[i])
             unique_elements = set()
-            if len(test_case) == 1:
+            if len(test_case) <= 1:
                 unique_elements.add(tuple(test_case))
             else:
                 first_element = test_case.pop(0)
@@ -304,6 +307,7 @@ def get_potential_parents(markov_blankets):
                         test_case += [*unfold(examine_group)]
                     else:
                         unique_elements.add(tuple(sorted(examine_group + [first_element])))
+                    
             final_output = final_output|unique_elements
         potential_parents[anchor_var] = [j for j in final_output]
     return potential_parents
@@ -331,13 +335,14 @@ def marginal_prob(df: pd.DataFrame, variables: list):
 def res2mtx(results: dict, all_vars: list):
     weighted_mtx = np.ones([len(all_vars), len(all_vars)])
     for var in all_vars: #type:ignore
-        var_id = all_vars.index(var)
-        best_comb, best_variance = min(results[var].items(), key=lambda item: item[1])        
-        for parent in best_comb:
-            pa_id = all_vars.index(parent)
-            if best_variance < weighted_mtx[var_id][pa_id]:
-                weighted_mtx[pa_id][var_id] = best_variance
-                weighted_mtx[var_id][pa_id] = 1
+        if len(results[var].items()):
+            var_id = all_vars.index(var)
+            best_comb, best_variance = min(results[var].items(), key=lambda item: item[1])        
+            for parent in best_comb:
+                pa_id = all_vars.index(parent)
+                if best_variance < weighted_mtx[var_id][pa_id]:
+                    weighted_mtx[pa_id][var_id] = best_variance
+                    weighted_mtx[var_id][pa_id] = 1
     return weighted_mtx
     
 
@@ -347,128 +352,135 @@ if __name__ == "__main__":
     df, all_vars, groundtruth = load_data(options)
     if not Path(options['output']).exists():
         f = open(options["output"], "w")
-        f.write("{},{},{},{},{},{},{},{},{},{},{}\n".format(
-            'dataname', 'folder', 'num_env','gamma2', 'TMB', 'mode',
+        f.write("{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
+            'dataname', 'folder', 'num_env','gamma2', 'TMB', 'mode', 'capsize',
             'etrue', 'espur', 'emiss', 'efals', 'time'))
         f.close()
     
-    start = time.time()
-    markov_blankets = {var: [] for var in all_vars}
-    if options['TMB']:
-        for var in markov_blankets.keys():
-            pa, pa_sp, sp, ch_sp, ch = true_markov_blanket(groundtruth, int(var[1:]) - 1)
-            markov_blankets[var] = list(set(to_list(all_vars, pa + pa_sp + sp + ch_sp + ch)) - set([var]))
-    else:
-        markov_blankets = GSMB(df, [i for i in range(len(df))])
-    
-
-    def compute_variance_viaindexesv2(indexes: list, variable: str, parents: list):
-        conditional_probs_record = df[parents + [variable]].groupby(parents + [variable]).count().reset_index()
-        mll_list = []
-        env = 0
-        for index in indexes:
-            vertical_sampled_data = df.iloc[index].reset_index()
-            vertical_sampled_data = vertical_sampled_data.drop(columns=['index'])
-            vertical_sampled_data.insert(0, 'count', [1] * len(vertical_sampled_data))
-            
-            summary_with_ch = vertical_sampled_data.groupby(parents + [variable])['count'].sum().reset_index()
-            mll, output = compute_mll(summary_with_ch, parents, env)
-            conditional_probs_record = conditional_probs_record.merge(output, on=parents + [variable], how='left')
-            mll_list.append(mll)
-            env += 1
-        
-        mean_mll = np.mean(mll_list)
-        var_avg = conditional_probs_record.iloc[:, len(parents) + 1:].var(axis=1, skipna=True).mean()
-        return var_avg, mean_mll, conditional_probs_record
-
-    def compute_weighted_variance_viaindexesv2(indexes: list, variable: str, parents: list):
-        variance, _, df = compute_variance_viaindexesv2(indexes, variable, parents)
-        if len(parents):
-            joint_mat = np.array([df[f'joint_{i}'] for i in range(len(indexes))]).T
-            probs_mat = np.array([df[f'probs_{i}'] for i in range(len(indexes))]).T
-            probs_mean = []
-            for i in range(probs_mat.shape[0]):
-                if len(probs_mat[i][~np.isnan(probs_mat[i])]):
-                    probs_mean.append(np.mean(probs_mat[i][~np.isnan(probs_mat[i])]).item())
-                else:
-                    probs_mean.append(0)
-                    
-            probs_mean = np.expand_dims(np.array(probs_mean), 1)
-            # joint_mat = joint_mat.shape[1] * joint_mat/joint_mat.sum(axis=1, keepdims=True)
-            prod = joint_mat * (probs_mat - probs_mean)**2
-            return np.power(np.mean(prod[~np.isnan(prod)]), 0.5), parents
+    for _ in range(options['exp_repeat']):
+        start = time.time()
+        markov_blankets = {var: [] for var in all_vars}
+        if options['TMB']:
+            for var in markov_blankets.keys():
+                pa, pa_sp, sp, ch_sp, ch = true_markov_blanket(groundtruth, int(var[1:]) - 1)
+                markov_blankets[var] = list(set(to_list(all_vars, pa + pa_sp + sp + ch_sp + ch)) - set([var]))
         else:
-            return variance, parents
+            markov_blankets = GSMB(df, [i for i in range(len(df))])
+        
 
-    def procedure_for_sources(sources):
-        potential_parents = get_potential_parents(markov_blankets)
-        sample_dis = {x: generate_uniform_distributions(P0=marginal_prob(df, [x]),
-                                                        num_gen=options['num_env'], 
-                                                        gamma2=np.power(options['gamma2'], 1./len(sources))) for x in sources}
-        silos_index = [multivariate_sampling(df, sources, sample_dis, i) for i in range(options['num_env'])]
-        inputs = [(var, potential_parents, silos_index) for var in markov_blankets.keys()]
-        outputs = execute_in_parallel(individual_causal_search_forward, inputs)
+        def compute_variance_viaindexesv2(indexes: list, variable: str, parents: list):
+            conditional_probs_record = df[parents + [variable]].groupby(parents + [variable]).count().reset_index()
+            mll_list = []
+            env = 0
+            for index in indexes:
+                vertical_sampled_data = df.iloc[index].reset_index()
+                vertical_sampled_data = vertical_sampled_data.drop(columns=['index'])
+                vertical_sampled_data.insert(0, 'count', [1] * len(vertical_sampled_data))
+                
+                summary_with_ch = vertical_sampled_data.groupby(parents + [variable])['count'].sum().reset_index()
+                mll, output = compute_mll(summary_with_ch, parents, env)
+                conditional_probs_record = conditional_probs_record.merge(output, on=parents + [variable], how='left')
+                mll_list.append(mll)
+                env += 1
+            
+            mean_mll = np.mean(mll_list)
+            var_avg = conditional_probs_record.iloc[:, len(parents) + 1:].var(axis=1, skipna=True).mean()
+            return var_avg, mean_mll, conditional_probs_record
 
-        results = tuple()
-        for out_dict in outputs:
-            results += tuple(out_dict.items())
-        results = dict(results)
-        
-        weighted_mtx = res2mtx(results, all_vars)
-        hardcap_invariance = options['hardcap']
-        weighted_mtx[weighted_mtx > hardcap_invariance] = 0
-        adj_mtx = (weighted_mtx > 0) * 1
-        return adj_mtx
+        def compute_weighted_variance_viaindexesv2(indexes: list, variable: str, parents: list):
+            variance, _, df = compute_variance_viaindexesv2(indexes, variable, parents)
+            if len(parents):
+                joint_mat = np.array([df[f'joint_{i}'] for i in range(len(indexes))]).T
+                probs_mat = np.array([df[f'probs_{i}'] for i in range(len(indexes))]).T
+                probs_mean = []
+                for i in range(probs_mat.shape[0]):
+                    if len(probs_mat[i][~np.isnan(probs_mat[i])]):
+                        probs_mean.append(np.mean(probs_mat[i][~np.isnan(probs_mat[i])]).item())
+                    else:
+                        probs_mean.append(0)
+                        
+                probs_mean = np.expand_dims(np.array(probs_mean), 1)
+                # joint_mat = joint_mat.shape[1] * joint_mat/joint_mat.sum(axis=1, keepdims=True)
+                prod = joint_mat * (probs_mat - probs_mean)**2
+                return np.power(np.mean(prod[~np.isnan(prod)]), 0.5), parents
+            else:
+                return variance, parents
 
-    def procedure_for_leaves(leaves):
-        sample_dis = {x: generate_uniform_distributions(P0=marginal_prob(df, [x]),
-                                                num_gen=options['num_env'], 
-                                                gamma2=np.power(options['gamma2'], 1./len(leaves))) for x in leaves}
-        silos_index = [multivariate_sampling(df, leaves, sample_dis, i) for i in range(options['num_env'])]
-        inputs = [(var, silos_index) for var in markov_blankets.keys()]
-        outputs = execute_in_parallel(individual_causal_search_backward, inputs)
+        def procedure_for_sources(sources):
+            potential_parents = get_potential_parents(markov_blankets)
+            sample_dis = {x: generate_uniform_distributions(P0=marginal_prob(df, [x]),
+                                                            num_gen=options['num_env'], 
+                                                            gamma2=np.power(options['gamma2'], 1./len(sources))) for x in sources}
+            silos_index = [multivariate_sampling(df, sources, sample_dis, i) for i in range(options['num_env'])]
+            inputs = [(var, potential_parents, silos_index) for var in markov_blankets.keys()]
+            outputs = execute_in_parallel(individual_causal_search_forward, inputs)
 
-        results = tuple()
-        for out_dict in outputs:
-            results += tuple(out_dict.items())
-        results = dict(results)
+            results = tuple()
+            for out_dict in outputs:
+                results += tuple(out_dict.items())
+            results = dict(results)
+            
+            weighted_mtx = res2mtx(results, all_vars)
+            hardcap_invariance = options['hardcap']
+            weighted_mtx[weighted_mtx > hardcap_invariance] = 0
+            adj_mtx = (weighted_mtx > 0) * 1
+            return adj_mtx
+
+        def procedure_for_leaves(leaves):
+            sample_dis = {x: generate_uniform_distributions(P0=marginal_prob(df, [x]),
+                                                    num_gen=options['num_env'], 
+                                                    gamma2=np.power(options['gamma2'], 1./len(leaves))) for x in leaves}
+            silos_index = [multivariate_sampling(df, leaves, sample_dis, i) for i in range(options['num_env'])]
+            inputs = [(var, silos_index) for var in markov_blankets.keys()]
+            outputs = execute_in_parallel(individual_causal_search_backward, inputs)
+
+            results = tuple()
+            for out_dict in outputs:
+                results += tuple(out_dict.items())
+            results = dict(results)
+            
+            weighted_mtx = res2mtx(results, all_vars)
+            hardcap_invariance = options['hardcap']
+            weighted_mtx[weighted_mtx > hardcap_invariance] = 0
+            adj_mtx = (weighted_mtx > 0) * 1
+            return adj_mtx.T
         
-        weighted_mtx = res2mtx(results, all_vars)
-        hardcap_invariance = options['hardcap']
-        weighted_mtx[weighted_mtx > hardcap_invariance] = 0
-        adj_mtx = (weighted_mtx > 0) * 1
-        return adj_mtx.T
-    
-    
-    mode = options['mode']
-    if (mode.upper() == "AS") or (mode.upper() == "MS"):
-        basis_index = [i for i in range(groundtruth.shape[0]) if np.sum(groundtruth[:,i]) == 0]
-        sources = np.array(all_vars)[np.array(basis_index)].tolist()
-        adj_mtx = procedure_for_sources(sources)
         
-        
-    elif (mode.upper() == "AL") or (mode.upper() == "AL-RE"):
-        basis_index = [i for i in range(groundtruth.shape[0]) if np.sum(groundtruth[i]) == 0]
-        leaves = np.array(all_vars)[np.array(basis_index)].tolist()
-        leaves = find_basis(df, leaves)
-        adj_mtx = procedure_for_leaves(leaves)
-        
-        if mode.upper() == "AL-RE":
-            sources_idx = np.array([i for i in range(len(all_vars)) if np.sum(adj_mtx[:, i]) == 0])
-            sources = np.array(all_vars)[sources_idx].tolist()
-            sources = list(set(sources) - set(leaves))
+        mode = options['mode']
+        if (mode.upper() == "AS") or (mode.upper() == "MS"):
+            basis_index = [i for i in range(groundtruth.shape[0]) if np.sum(groundtruth[:,i]) == 0]
+            sources = np.array(all_vars)[np.array(basis_index)].tolist()
             adj_mtx = procedure_for_sources(sources)
+            
+            
+        elif (mode.upper() == "AL") or (mode.upper() == "AL-RE"):
+            basis_index = [i for i in range(groundtruth.shape[0]) if np.sum(groundtruth[i]) == 0]
+            leaves = np.array(all_vars)[np.array(basis_index)].tolist()
+            leaves = find_basis(df, leaves)
+            adj_mtx = procedure_for_leaves(leaves)
+            
+            if mode.upper() == "AL-RE":
+                sources_idx = np.array([i for i in range(len(all_vars)) if np.sum(adj_mtx[:, i]) == 0])
+                sources = np.array(all_vars)[sources_idx].tolist()
+                sources = list(set(sources) - set(leaves))
+                adj_mtx = procedure_for_sources(sources)
+        
+        
+        else: # mode = 'n'
+            basis = find_basis(df, all_vars)
+            adj_mtx = procedure_for_sources(basis)
 
 
-    finish = time.time()
-    etrue, espur, emiss, efals = evaluate(groundtruth, adj_mtx)
-    f = open(options["output"], "a")
-    f.write("{},{},{},{},{},{},{},{},{},{},{}\n".format(
-        options['dataname'], options['folder'], options['num_env'], options['gamma2'], options['TMB'], options['mode'],
-        etrue, espur, emiss, efals, finish - start
-    ))
-    f.close()
-    print("Writting results done!")
+
+        finish = time.time()
+        etrue, espur, emiss, efals = evaluate(groundtruth, adj_mtx)
+        f = open(options["output"], "a")
+        f.write("{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
+            options['dataname'], options['folder'], options['num_env'], options['gamma2'], options['TMB'], options['mode'], options['capsize'],
+            etrue, espur, emiss, efals, finish - start
+        ))
+        f.close()
+        print("Writting results done!")
 
 
 
