@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 import os
-from itertools import combinations
+# from itertools import combinations
 from plot_utils import true_edge, spur_edge, fals_edge, miss_edge
 import time
 from causallearn.utils.cit import CIT
@@ -19,12 +19,12 @@ def read_opts():
     parser.add_argument("--dataname", type=str, default="asia")
     parser.add_argument("--folder", type=str, default="m3_d1_n10")
     parser.add_argument("--output", type=str, default="res.csv")
-    parser.add_argument("--confidence", type=float, default='0.01')
+    parser.add_argument("--confidence", type=float, default='0.05')
     parser.add_argument("--TMB", type=int, default=0)
     parser.add_argument("--hardcap", type=float, default='0.001')
     parser.add_argument("--gamma2", type=float, default='0.5')
     parser.add_argument("--num_env", type=int, default=10)
-    parser.add_argument("--capsize", type=int, default=4)
+    # parser.add_argument("--capsize", type=int, default=4)
     parser.add_argument("--mode", type=str, choices=['aS', 'aL', 'aL-Re', 'n'], default='aS')
     parser.add_argument("--exp_repeat", type=int, default=1)
     options = vars(parser.parse_args())
@@ -53,14 +53,7 @@ def load_data(options):
     return merged_df, all_vars, groundtruth
 
 
-def find_basis(df: pd.DataFrame, all_vars: list, confidence=0.01):
-    """
-    Find the maximum set of inter-independent variables
-    given the data and the list of variables
-    Args:
-        df: data
-        all_vars: set of variables of interest
-    """
+def find_connectivity(df: pd.DataFrame, all_vars: list, confidence=0.05):
     data = df[all_vars]
     connectivity = {var: [] for var in all_vars}
     chisq_obj = CIT(data, "chisq")
@@ -72,11 +65,25 @@ def find_basis(df: pd.DataFrame, all_vars: list, confidence=0.01):
             if pval <= confidence: # type: ignore
                 connectivity[X] = list(set(connectivity[X]) | set([Y]))
                 connectivity[Y] = list(set(connectivity[Y]) | set([X]))
-    
+    return connectivity
+
+
+def find_basis(connectivity: dict, bounded_set = None):
+    """
+    Find the maximum set of inter-independent variables
+    given the connectivity dictionary
+    {
+        var: [list of all variables that are dependent on var]
+    }
+    """
     basis = []
-    random_vars = deepcopy(all_vars)
-    shuffle(random_vars)
-    ordering = sorted(random_vars, key=lambda item: len(connectivity[item]), reverse=False)
+    if bounded_set:
+        ordering = sorted(bounded_set, key=lambda item: len(connectivity[item]), reverse=False)
+    else:
+        random_vars = deepcopy(list(connectivity.keys()))
+        shuffle(random_vars)
+        ordering = sorted(random_vars, key=lambda item: len(connectivity[item]), reverse=False)
+        
     while len(ordering):
         x = ordering.pop(0)
         discard_vars = connectivity[x]
@@ -141,11 +148,13 @@ def removes_irrelevant(df, var, plausible_set, confidence=0.01):
             pval = chisq_obj(X, Y, list(set(S) - set([Y]))) # type:ignore
             if pval > confidence: # type:ignore
                 S.remove(Y)
+                
         for Y in list(set(all_var_idx) - set(S) - set([X])):
             if Y != X:
                 pval = chisq_obj(X, Y, S) # type:ignore
                 if pval <= confidence: # type:ignore
                     S.append(Y)
+                    
         if (len(S) - prev_length == 0) or (count > 10):
             break
         else:
@@ -260,26 +269,6 @@ def unfold(input):
       out.append([*input[:cut_index], *input[i]])
     return out
 
-
-def individual_causal_search_backward(var, silos_index):
-    record = {}
-    for mb_var in markov_blankets[var]:
-        variance, _ = compute_weighted_variance_viaindexesv2(silos_index, var, [mb_var])
-        record[tuple([mb_var])] = variance
-    return {var: record}
-
-
-def individual_causal_search_forward(var, potential_parents_for_var, silos_index):
-    buffers = {}
-    for group in sorted(potential_parents_for_var, key=lambda item: len(item)):
-        for l in range(1, min(len(group)+1, options['capsize'])).__reversed__():
-            for comb in combinations(group, l):
-                comb = tuple(sorted(comb))
-                if comb not in buffers.keys():
-                    variance, _ = compute_weighted_variance_viaindexesv2(silos_index, var, list(comb))
-                    buffers[comb] = variance
-    return {var: buffers}
-  
 # Function to execute F in parallel
 def execute_in_parallel(func, args_list: List[Tuple]):
     with Pool() as pool:
@@ -314,7 +303,7 @@ def compute_mll(summary_with_ch: pd.DataFrame, potential_parent: list, num_env):
         return mll, output
 
 
-def get_potential_parents(markov_blankets):
+def get_potential_parents(df, markov_blankets):
     recursive_outputs = {}
     for anchor_var in markov_blankets.keys():
         recursive_outputs[anchor_var] = recursive_conn(markov_blankets, deepcopy(markov_blankets[anchor_var]))
@@ -338,7 +327,7 @@ def get_potential_parents(markov_blankets):
                         unique_elements.add(tuple(sorted(examine_group + [first_element])))
                     
             final_output = final_output|unique_elements
-        potential_parents[anchor_var] = [j for j in final_output]
+        potential_parents[anchor_var] = [removes_irrelevant(df, anchor_var, j) for j in final_output]
     return potential_parents
 
 
@@ -381,13 +370,14 @@ if __name__ == "__main__":
     df, all_vars, groundtruth = load_data(options)
     if not Path(options['output']).exists():
         f = open(options["output"], "w")
-        f.write("{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
-            'dataname', 'folder', 'num_env','gamma2', 'TMB', 'mode', 'capsize',
+        f.write("{},{},{},{},{},{},{},{},{},{},{}\n".format(
+            'dataname', 'folder', 'num_env','gamma2', 'TMB', 'mode',
             'etrue', 'espur', 'emiss', 'efals', 'time'))
         f.close()
     
     for _ in range(options['exp_repeat']):
         start = time.time()
+        connectivity = find_connectivity(df, all_vars, 0.05)
         markov_blankets = {var: [] for var in all_vars}
         if options['TMB']:
             for var in markov_blankets.keys():
@@ -395,7 +385,7 @@ if __name__ == "__main__":
                 markov_blankets[var] = list(set(to_list(all_vars, pa + pa_sp + sp + ch_sp + ch)) - set([var]))
         else:
             markov_blankets = GSMB(df, [i for i in range(len(df))])
-        
+            
 
         def compute_variance_viaindexesv2(indexes: list, variable: str, parents: list):
             conditional_probs_record = df[parents + [variable]].groupby(parents + [variable]).count().reset_index()
@@ -435,13 +425,30 @@ if __name__ == "__main__":
             else:
                 return variance, parents
 
+        def individual_causal_search_forward(var, potential_parents_for_var, silos_index):
+            buffers = {}
+            for group in potential_parents_for_var:
+                conn_group = list(set(connectivity[var])&set(group))
+                cleaned_group = removes_irrelevant(df, var, conn_group)
+                if len(cleaned_group):
+                    variance, _ = compute_weighted_variance_viaindexesv2(silos_index, var, cleaned_group)
+                    buffers[tuple(cleaned_group)] = variance
+            return {var: buffers}
+        
+        def individual_causal_search_backward(var, silos_index):
+            record = {}
+            for mb_var in markov_blankets[var]:
+                variance, _ = compute_weighted_variance_viaindexesv2(silos_index, var, [mb_var])
+                record[tuple([mb_var])] = variance
+            return {var: record}
+
         def procedure_for_sources(sources):
-            potential_parents = get_potential_parents(markov_blankets)
+            potential_parents = get_potential_parents(df, markov_blankets)
             sample_dis = {x: generate_uniform_distributions(P0=marginal_prob(df, [x]),
                                                             num_gen=options['num_env'], 
                                                             gamma2=np.power(options['gamma2'], 1./len(sources))) for x in sources}
             silos_index = [multivariate_sampling(df, sources, sample_dis, i) for i in range(options['num_env'])]
-            inputs = [(var, removes_irrelevant(df, var, potential_parents[var], options['confidence']), silos_index) for var in markov_blankets.keys()]
+            inputs = [(var, potential_parents[var], silos_index) for var in markov_blankets.keys()]
             outputs = execute_in_parallel(individual_causal_search_forward, inputs)
 
             results = tuple()
@@ -481,11 +488,10 @@ if __name__ == "__main__":
             sources = np.array(all_vars)[np.array(basis_index)].tolist()
             adj_mtx = procedure_for_sources(sources)
             
-            
         elif (mode.upper() == "AL") or (mode.upper() == "AL-RE"):
             basis_index = [i for i in range(groundtruth.shape[0]) if np.sum(groundtruth[i]) == 0]
             leaves = np.array(all_vars)[np.array(basis_index)].tolist()
-            leaves = find_basis(df, leaves)
+            leaves = find_basis(connectivity, bounded_set=leaves)
             adj_mtx = procedure_for_leaves(leaves)
             
             if mode.upper() == "AL-RE":
@@ -494,18 +500,16 @@ if __name__ == "__main__":
                 sources = list(set(sources) - set(leaves))
                 adj_mtx = procedure_for_sources(sources)
         
-        
         else: # mode = 'n'
-            basis = find_basis(df, all_vars)
+            basis = find_basis(connectivity)
             adj_mtx = procedure_for_sources(basis)
-
 
 
         finish = time.time()
         etrue, espur, emiss, efals = evaluate(groundtruth, adj_mtx)
         f = open(options["output"], "a")
-        f.write("{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
-            options['dataname'], options['folder'], options['num_env'], options['gamma2'], options['TMB'], options['mode'], options['capsize'],
+        f.write("{},{},{},{},{},{},{},{},{},{},{}\n".format(
+            options['dataname'], options['folder'], options['num_env'], options['gamma2'], options['TMB'], options['mode'],
             etrue, espur, emiss, efals, finish - start
         ))
         f.close()
