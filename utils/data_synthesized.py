@@ -147,6 +147,7 @@ import random
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--adj_path", type=str, default=None)
     parser.add_argument("--num_node", type=int, default=10)
     parser.add_argument("--mi", type=int, default=3)
     parser.add_argument("--di", type=float, default='1')
@@ -162,29 +163,33 @@ if __name__ == "__main__":
     n = options['n']
     s = options['s']
     
-    graph = nx.erdos_renyi_graph(n=num_node, p=p, seed=0, directed=True)
-    try:
-        while True:
-            cycle_list = nx.find_cycle(graph, orientation='original')
-            if len(cycle_list):
-                random.shuffle(cycle_list)
-                a, b, type = cycle_list[0]
-                graph.remove_edge(a, b)
-            else:
-                break
-    except:
-        pass
+    if options['adj_path'] is None:
+        graph = nx.erdos_renyi_graph(n=num_node, p=p, seed=0, directed=True)
+        try:
+            while True:
+                cycle_list = nx.find_cycle(graph, orientation='original')
+                if len(cycle_list):
+                    random.shuffle(cycle_list)
+                    a, b, type = cycle_list[0]
+                    graph.remove_edge(a, b)
+                else:
+                    break
+        except:
+            pass
 
-    adj_mtx = np.zeros([num_node, num_node])
-    for edge in graph.edges:
-        a, b = edge
-        adj_mtx[a][b] = 1
-        
-    outdegrees = np.sum(adj_mtx, axis=0, keepdims=True)
-    indegrees = np.sum(adj_mtx, axis=1, keepdims=True)
+        adj_mtx = np.zeros([num_node, num_node])
+        for edge in graph.edges:
+            a, b = edge
+            adj_mtx[a][b] = 1
+            
+        outdegrees = np.sum(adj_mtx, axis=0, keepdims=True)
+        indegrees = np.sum(adj_mtx, axis=1, keepdims=True)
 
-    if outdegrees.max() < indegrees.max():
-        adj_mtx = adj_mtx.T
+        if outdegrees.max() < indegrees.max():
+            adj_mtx = adj_mtx.T
+    else:
+        adj_mtx = np.loadtxt(options['adj_path'], delimiter=' ')
+        print("Loaded adj matrix")
 
     dag = DAG(adj_mtx, max_numvals=mi, alpha=di)
     

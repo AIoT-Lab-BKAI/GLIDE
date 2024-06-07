@@ -12,6 +12,7 @@ import os
 def inP(p0: np.ndarray, px: np.ndarray, gamma):
     return min(p0/px) >= gamma
 
+
 def generate_uniform_distributions(P0: np.ndarray, num_gen=100, gamma2=0.8):
     Ulist = list(np.eye(P0.shape[0]))
     # Compute the boundary points
@@ -61,6 +62,7 @@ def marginal_prob(df: pd.DataFrame, variables: list):
     output = res_var['count']/res_var['count'].sum()
     # res[var] = res_var['prob'].to_numpy()
     return output.to_numpy()
+
 
 def univariate_sampling(data: pd.DataFrame, variable: str, sample_dis: dict):
     """
@@ -144,6 +146,8 @@ def read_opts():
     parser.add_argument("--folder", type=str, default="m3_d1_n10")
     parser.add_argument("--output", type=str, default="res.csv")
     parser.add_argument("--confidence", type=float, default='0.01')
+    parser.add_argument("--TMB", type=int, default=0)
+    parser.add_argument("--weighted", type=int, default=0)
     parser.add_argument("--hardcap", type=float, default='0.001')
     parser.add_argument("--gamma2", type=float, default='0.8')
     parser.add_argument("--num_env", type=int, default=100)
@@ -171,8 +175,10 @@ def load_data(options):
         silos.append(silo_data)
         all_vars = silos[0].columns
     
-    all_vars = list(all_vars)
     merged_df = pd.concat(silos, axis=0)
+    merged_df = merged_df.reindex(sorted(merged_df.columns, key=lambda item: int(item[1:])), axis=1)
+    all_vars = list(merged_df.columns)
+    
     print("Loading data done! -- Full data:", len(merged_df))
     return merged_df, all_vars, groundtruth
 

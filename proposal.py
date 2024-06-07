@@ -3,8 +3,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 import os
-# from itertools import combinations
-from plot_utils import true_edge, spur_edge, fals_edge, miss_edge
+from utils.plot_utils import true_edge, spur_edge, fals_edge, miss_edge
 import time
 from causallearn.utils.cit import CIT
 from copy import deepcopy
