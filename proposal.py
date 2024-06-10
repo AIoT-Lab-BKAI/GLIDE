@@ -447,13 +447,16 @@ if __name__ == "__main__":
                                                             num_gen=options['num_env'], 
                                                             gamma2=np.power(options['gamma2'], 1./len(sources))) for x in sources}
             silos_index = [multivariate_sampling(df, sources, sample_dis, i) for i in range(options['num_env'])]
-            inputs = [(var, potential_parents[var], silos_index) for var in markov_blankets.keys()]
+            inputs = [(var, potential_parents[var], silos_index) for var in list(set(all_vars))]
             outputs = execute_in_parallel(individual_causal_search_forward, inputs)
-
             results = tuple()
             for out_dict in outputs:
                 results += tuple(out_dict.items())
             results = dict(results)
+            
+            if mode.upper() == "AS":
+                for s in sources:
+                    results[s] = {}
             
             weighted_mtx = res2mtx(results, all_vars)
             hardcap_invariance = options['hardcap']
@@ -482,7 +485,7 @@ if __name__ == "__main__":
         
         
         mode = options['mode']
-        if (mode.upper() == "AS") or (mode.upper() == "MS"):
+        if (mode.upper() == "AS"):
             basis_index = [i for i in range(groundtruth.shape[0]) if np.sum(groundtruth[:,i]) == 0]
             sources = np.array(all_vars)[np.array(basis_index)].tolist()
             adj_mtx = procedure_for_sources(sources)

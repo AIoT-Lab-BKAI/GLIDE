@@ -40,9 +40,8 @@ def load_data(options):
         filename = os.path.join(folderpath, file)
         silo_data = pd.read_csv(filename)
         silos.append(silo_data)
-        all_vars = silos[0].columns
 
-    all_vars = list(all_vars)
+    all_vars = list(silos[0].columns)
     return all_vars, groundtruth, silos
 
 
@@ -50,6 +49,13 @@ if __name__ == "__main__":
     options = read_opts()
     all_vars, groundtruth, silos = load_data(options)
     data = pd.concat(silos, axis=0)
+    
+    if not Path(options['output']).exists():
+        f = open(options["output"], "w")
+        f.write("{},{},{},{},{},{},{},{}\n".format(
+            'dataname', 'folder', 'baseline', 'etrue', 'espur', 'emiss', 'efals', 'time'))
+        f.close()
+    
     start = time.time()
     
     if options['baseline'] == "PC":
@@ -73,8 +79,7 @@ if __name__ == "__main__":
     elif options['baseline'] == "CDNOD":
         c_indx = []
         for i in range(len(silos)):
-            data = silos[i]
-            c_indx += [i+1] * len(data)
+            c_indx += [i+1] * len(silos[i])
         c_indx = np.array(c_indx).reshape(len(silos)*len(silos[0]), 1)
 
         cg = cdnod(data.to_numpy(), c_indx, 0.05, fisherz)
@@ -104,20 +109,15 @@ if __name__ == "__main__":
     elif options['baseline'] == "GIES":
         obj = GIES()
         output = obj.predict(data)
+        adj_mtx = np.zeros([len(all_vars), len(all_vars)])
         for edge in output.edges:     # type:ignore
             source, target = edge
             source_id = int(source[1:]) - 1
             target_id = int(target[1:]) - 1
             adj_mtx[source_id][target_id] = 1
-            
             if adj_mtx[target_id][source_id] == 1:
-                rand_num = np.random.rand()
-                if rand_num > 0.5:
-                    adj_mtx[source_id][target_id] = 0
-                    adj_mtx[target_id][source_id] = 1
-                else:
-                    adj_mtx[source_id][target_id] = 1
-                    adj_mtx[target_id][source_id] = 0
+                adj_mtx[source_id][target_id] = 0
+                adj_mtx[target_id][source_id] = 0
     
     
     finish = time.time()
