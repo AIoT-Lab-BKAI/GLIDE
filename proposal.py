@@ -369,12 +369,14 @@ if __name__ == "__main__":
     df, all_vars, groundtruth = load_data(options)
     if not Path(options['output']).exists():
         f = open(options["output"], "w")
-        f.write("{},{},{},{},{},{},{},{},{},{},{}\n".format(
+        f.write("{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
             'dataname', 'folder', 'num_env','gamma2', 'TMB', 'mode',
-            'etrue', 'espur', 'emiss', 'efals', 'time'))
+            'etrue', 'espur', 'emiss', 'efals', 'shd', 'tpr','time'))
         f.close()
     
-    for _ in range(options['exp_repeat']):
+    print("Running settings:", options)
+    for r in range(options['exp_repeat']):
+        print(f"Run {r+1}/{options['exp_repeat']}... ", end="")
         start = time.time()
         connectivity = find_connectivity(df, all_vars, 0.05)
         markov_blankets = {var: [] for var in all_vars}
@@ -447,16 +449,16 @@ if __name__ == "__main__":
                                                             num_gen=options['num_env'], 
                                                             gamma2=np.power(options['gamma2'], 1./len(sources))) for x in sources}
             silos_index = [multivariate_sampling(df, sources, sample_dis, i) for i in range(options['num_env'])]
-            inputs = [(var, potential_parents[var], silos_index) for var in list(set(all_vars))]
+
+            inputs = [(var, potential_parents[var], silos_index) for var in list(set(all_vars) - set(sources))]
+            
             outputs = execute_in_parallel(individual_causal_search_forward, inputs)
             results = tuple()
             for out_dict in outputs:
                 results += tuple(out_dict.items())
             results = dict(results)
-            
-            if mode.upper() == "AS":
-                for s in sources:
-                    results[s] = {}
+            for s in sources:
+                results[s] = {}
             
             weighted_mtx = res2mtx(results, all_vars)
             hardcap_invariance = options['hardcap']
@@ -508,11 +510,12 @@ if __name__ == "__main__":
 
 
         finish = time.time()
+        print("Done!", end=" ")
         etrue, espur, emiss, efals = evaluate(groundtruth, adj_mtx)
         f = open(options["output"], "a")
-        f.write("{},{},{},{},{},{},{},{},{},{},{}\n".format(
+        f.write("{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
             options['dataname'], options['folder'], options['num_env'], options['gamma2'], options['TMB'], options['mode'],
-            etrue, espur, emiss, efals, finish - start
+            etrue, espur, emiss, efals, espur+emiss+efals, round(etrue/(etrue + espur + efals), 2), finish - start
         ))
         f.close()
         print("Writting results done!")
