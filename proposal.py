@@ -239,14 +239,22 @@ def multivariate_sampling(data: pd.DataFrame, variables: list, sample_dis: dict,
     return all_index
 
 
-def recursive_conn(markov_blankets, neighbors):
+buffers = {}
+def recursive_conn(neighbors):
     output = []
     if len(neighbors) <= 1:
-      output = [neighbors]
+        output = [neighbors]
     else:
-      for i in neighbors:
-        res_i = [i] + recursive_conn(markov_blankets, list(set(neighbors)&set(markov_blankets[i])))
-        output.append(res_i)
+        for i in neighbors:
+            key = sorted(list(set(neighbors)&set(markov_blankets[i])))
+            if tuple(key) in buffers.keys():
+                res_i = [i] + buffers[tuple(key)]
+            else:
+                val = recursive_conn(key)
+                buffers[tuple(key)] = val
+                res_i = [i] + val
+                
+            output.append(res_i)
     return output
 
 
