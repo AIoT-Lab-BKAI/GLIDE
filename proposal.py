@@ -239,7 +239,24 @@ def multivariate_sampling(data: pd.DataFrame, variables: list, sample_dis: dict,
     return all_index
 
 
+def unnested(input: list):
+    if len(input) == 1:
+        if isinstance(input[0], list):
+            return unnested(input[0])
+        else:
+            return input
+    else:
+        nested_loc = [i for i in range(len(input)) if isinstance(input[i], list)]
+        while len(nested_loc):
+            i = nested_loc.pop(0)
+            input += [*input[i]]
+            input.pop(i)
+            nested_loc = [i for i in range(len(input)) if isinstance(input[i], list)]
+        return list(set(input))
+    
+
 buffers = {}
+visited = []
 def recursive_conn(markov_blankets, neighbors):
     output = []
     if len(neighbors) <= 1:
@@ -253,23 +270,27 @@ def recursive_conn(markov_blankets, neighbors):
                 val = recursive_conn(markov_blankets, key)
                 buffers[tuple(key)] = val
                 res_i = [i] + val
-                
-            output.append(res_i)
+
+            visit_key = tuple(sorted(unnested(deepcopy(res_i))))
+            if visit_key not in visited:
+                # print(visit_key)
+                output.append(res_i)
+                visited.append(visit_key)
     return output
 
 
 def unfold(input):
     """
     Arguments:
-      input: [var, var, ..., [var, ...], [var, ...]]
+        input: [var, var, ..., [var, ...], [var, ...]]
 
     that has a number of non-list element and a number of list element
     """
     cut_index = 0
     while cut_index < len(input):
-      cut_index += 1
-      if isinstance(input[cut_index], list):
-        break
+        cut_index += 1
+        if isinstance(input[cut_index], list):
+            break
 
     out = []
     for i in range(cut_index, len(input)):
