@@ -47,13 +47,14 @@ def load_data(options):
 
 if __name__ == "__main__":
     options = read_opts()
+    print("Running:", options)
     all_vars, groundtruth, silos = load_data(options)
     data = pd.concat(silos, axis=0)
     
     if not Path(options['output']).exists():
         f = open(options["output"], "w")
-        f.write("{},{},{},{},{},{},{},{}\n".format(
-            'dataname', 'folder', 'baseline', 'etrue', 'espur', 'emiss', 'efals', 'time'))
+        f.write("{},{},{},{},{},{},{},{},{},{}\n".format(
+            'dataname', 'folder', 'baseline', 'etrue', 'espur', 'emiss', 'efals', 'shd', 'tpr', 'time'))
         f.close()
     
     start = time.time()
@@ -128,8 +129,9 @@ if __name__ == "__main__":
     emiss = miss_edge(groundtruth, adj_mtx)
 
     f = open(options["output"], "a")
-    f.write("{},{},{},{},{},{},{},{}\n".format(
-        options['dataname'], options['folder'], options['baseline'], len(etrue), len(espur), len(emiss), len(efals), finish - start
+    f.write("{},{},{},{},{},{},{},{},{},{}\n".format(
+        options['dataname'], options['folder'], options['baseline'], 
+        len(etrue), len(espur), len(emiss), len(efals), len(espur)+len(emiss)+len(efals), round(len(etrue)/(len(etrue) + len(espur) + len(efals)), 2), finish - start
     ))
     
     f.close()
