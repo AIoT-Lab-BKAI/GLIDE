@@ -273,7 +273,6 @@ def recursive_conn(markov_blankets, neighbors):
 
             visit_key = tuple(sorted(unnested(deepcopy(res_i))))
             if visit_key not in visited:
-                # print(visit_key)
                 output.append(res_i)
                 visited.append(visit_key)
     return output
@@ -334,6 +333,8 @@ def compute_mll(summary_with_ch: pd.DataFrame, potential_parent: list, num_env):
 def get_potential_parents(df, markov_blankets):
     recursive_outputs = {}
     for anchor_var in markov_blankets.keys():
+        buffers.clear()
+        visited.clear()
         recursive_outputs[anchor_var] = recursive_conn(markov_blankets, deepcopy(markov_blankets[anchor_var]))
 
     potential_parents = {}
