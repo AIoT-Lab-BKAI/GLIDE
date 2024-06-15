@@ -23,33 +23,62 @@ def read_opts():
     parser.add_argument("--hardcap", type=float, default='0.001')
     parser.add_argument("--gamma2", type=float, default='0.5')
     parser.add_argument("--num_env", type=int, default=10)
-    # parser.add_argument("--capsize", type=int, default=4)
     parser.add_argument("--mode", type=str, choices=['aS', 'aL', 'aL-Re', 'n'], default='aS')
     parser.add_argument("--exp_repeat", type=int, default=1)
+    
+    parser.add_argument("--d", type=int, default=20, help="Only used for notears dataset, the number of vertices")
+    parser.add_argument("--b", type=int, default=3, help="Only used for notears dataset, the number of discretization bins")
+    parser.add_argument("--ntype", type=str, default="linear", choices=["linear", "nonlinear"])
     options = vars(parser.parse_args())
     return options
 
 
 def load_data(options):
     dataname = options["dataname"]
-    folder = options["folder"]
-    folderpath = f"./data/distributed/{dataname}/{folder}"
-    groundtruth = np.loadtxt(f"./data/distributed/{dataname}/adj.txt")
-
-    silos = []
-    if not Path(folderpath).exists():
-        print("Folder", folderpath, "not exist!")
+    
+    if dataname == 'notears':
+        d, b, ntype = options['d'], options['b'], options['ntype']
+        folderpath = f"./data/{dataname}/{ntype}Gaussian/processed/X_{d}_{d}_{b}.csv"
+        merged_df = pd.read_csv(folderpath, index_col=0)
+        groundtruth = np.loadtxt(f"./data/{dataname}/{ntype}Gaussian/W_true_{d}_{d}.csv", delimiter=',')
+        all_vars = list(merged_df.columns)
+        
+        if not Path(options['output']).exists():
+            f = open(options["output"], "w")
+            f.write("{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
+                'dataname', 'd', 'b', 'num_env','gamma2', 'TMB', 'mode',
+                'etrue', 'espur', 'emiss', 'efals', 'shd', 'tpr','time'))
+            f.close()
+            
+        return merged_df, all_vars, groundtruth
+    
     else:
-        for file in sorted(os.listdir(folderpath)):
-            filename = os.path.join(folderpath, file)
-            silo_data = pd.read_csv(filename)
-            silos.append(silo_data)
-            # print("Loaded file:", filename)
+        folder = options["folder"]
+        folderpath = f"./data/distributed/{dataname}/{folder}"
+        groundtruth = np.loadtxt(f"./data/distributed/{dataname}/adj.txt")
 
-    merged_df = pd.concat(silos[:-1], axis=0)
-    merged_df = merged_df.reindex(sorted(merged_df.columns, key=lambda item: int(item[1:])), axis=1)
-    all_vars = list(merged_df.columns)
-    return merged_df, all_vars, groundtruth
+        silos = []
+        if not Path(folderpath).exists():
+            print("Folder", folderpath, "not exist!")
+        else:
+            for file in sorted(os.listdir(folderpath)):
+                filename = os.path.join(folderpath, file)
+                silo_data = pd.read_csv(filename)
+                silos.append(silo_data)
+                # print("Loaded file:", filename)
+
+        merged_df = pd.concat(silos[:-1], axis=0)
+        merged_df = merged_df.reindex(sorted(merged_df.columns, key=lambda item: int(item[1:])), axis=1)
+        all_vars = list(merged_df.columns)
+        
+        if not Path(options['output']).exists():
+            f = open(options["output"], "w")
+            f.write("{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
+                'dataname', 'folder', 'num_env','gamma2', 'TMB', 'mode',
+                'etrue', 'espur', 'emiss', 'efals', 'shd', 'tpr','time'))
+            f.close()
+        
+        return merged_df, all_vars, groundtruth
 
 
 def find_connectivity(df: pd.DataFrame, all_vars: list, confidence=0.05):
@@ -397,12 +426,6 @@ def res2mtx(results: dict, all_vars: list):
 if __name__ == "__main__":
     options = read_opts()
     df, all_vars, groundtruth = load_data(options)
-    if not Path(options['output']).exists():
-        f = open(options["output"], "w")
-        f.write("{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
-            'dataname', 'folder', 'num_env','gamma2', 'TMB', 'mode',
-            'etrue', 'espur', 'emiss', 'efals', 'shd', 'tpr','time'))
-        f.close()
     
     print("Running settings:", options)
     for r in range(options['exp_repeat']):
@@ -542,12 +565,22 @@ if __name__ == "__main__":
         finish = time.time()
         print("Done!", end=" ")
         etrue, espur, emiss, efals = evaluate(groundtruth, adj_mtx)
-        f = open(options["output"], "a")
-        f.write("{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
-            options['dataname'], options['folder'], options['num_env'], options['gamma2'], options['TMB'], options['mode'],
-            etrue, espur, emiss, efals, espur+emiss+efals, round(etrue/(etrue + espur + efals), 2), finish - start
-        ))
-        f.close()
+        
+        if options['dataname'] == "notears":
+            f = open(options["output"], "a")
+            f.write("{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
+                options['dataname'], options['d'], options['b'], options['num_env'], options['gamma2'], options['TMB'], options['mode'],
+                etrue, espur, emiss, efals, espur+emiss+efals, round(etrue/(etrue + espur + efals), 2), finish - start
+            ))
+            f.close()
+            
+        else:
+            f = open(options["output"], "a")
+            f.write("{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
+                options['dataname'], options['folder'], options['num_env'], options['gamma2'], options['TMB'], options['mode'],
+                etrue, espur, emiss, efals, espur+emiss+efals, round(etrue/(etrue + espur + efals), 2), finish - start
+            ))
+            f.close()
         print("Writting results done!")
 
 
