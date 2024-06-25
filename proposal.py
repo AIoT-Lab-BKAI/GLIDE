@@ -11,7 +11,7 @@ from sklearn.cluster import KMeans
 from multiprocessing import Pool
 from typing import List, Tuple
 from random import shuffle
-
+from baselines.notears.notears.utils import count_accuracy
 
 def read_opts():
     parser = argparse.ArgumentParser()
@@ -27,7 +27,8 @@ def read_opts():
     parser.add_argument("--exp_repeat", type=int, default=1)
     
     parser.add_argument("--d", type=int, default=20, help="Only used for notears dataset, the number of vertices")
-    parser.add_argument("--b", type=int, default=3, help="Only used for notears dataset, the number of discretization bins")
+    parser.add_argument("--s", type=int, default=None, help="Only used for notears dataset, the number of edges")
+    parser.add_argument("--b", type=int, default=4, help="Only used for notears dataset, the number of discretization bins")
     parser.add_argument("--ntype", type=str, default="linear", choices=["linear", "nonlinear"])
     options = vars(parser.parse_args())
     return options
@@ -38,15 +39,16 @@ def load_data(options):
     
     if dataname == 'notears':
         d, b, ntype = options['d'], options['b'], options['ntype']
-        folderpath = f"./data/{dataname}/{ntype}Gaussian/processed/X_{d}_{d}_{b}.csv"
+        s = options['s'] if options['s'] is not None else d
+        folderpath = f"./data/{dataname}/{ntype}Gaussian/processed/X_{d}_{s}_{b}.csv"
         merged_df = pd.read_csv(folderpath, index_col=0)
         groundtruth = np.loadtxt(f"./data/{dataname}/{ntype}Gaussian/W_true_{d}_{d}.csv", delimiter=',')
         all_vars = list(merged_df.columns)
         
         if not Path(options['output']).exists():
             f = open(options["output"], "w")
-            f.write("{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
-                'dataname', 'd', 'b', 'num_env','gamma2', 'TMB', 'mode',
+            f.write("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
+                'dataname', 'd', 's', 'b', 'num_env','gamma2', 'TMB', 'mode',
                 'etrue', 'espur', 'emiss', 'efals', 'shd', 'tpr','time'))
             f.close()
             
@@ -385,7 +387,8 @@ def get_potential_parents(df, markov_blankets):
                         unique_elements.add(tuple(sorted(examine_group + [first_element])))
                     
             final_output = final_output|unique_elements
-        potential_parents[anchor_var] = [removes_irrelevant(df, anchor_var, j) for j in final_output]
+        potential_parents[anchor_var] = [j for j in final_output]
+        # potential_parents[anchor_var] = [removes_irrelevant(df, anchor_var, j) for j in final_output]
     return potential_parents
 
 
@@ -564,23 +567,25 @@ if __name__ == "__main__":
 
         finish = time.time()
         print("Done!", end=" ")
+        # etrue, espur, emiss, efals = count_accuracy(groundtruth, adj_mtx)
         etrue, espur, emiss, efals = evaluate(groundtruth, adj_mtx)
         
+        f = open(options["output"], "a")
         if options['dataname'] == "notears":
-            f = open(options["output"], "a")
-            f.write("{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
-                options['dataname'], options['d'], options['b'], options['num_env'], options['gamma2'], options['TMB'], options['mode'],
+            f.write("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
+                options['dataname'], options['d'],  options['s'] if options['s'] else options['d'], 
+                options['b'], options['num_env'], options['gamma2'], options['TMB'], options['mode'],
                 etrue, espur, emiss, efals, espur+emiss+efals, round(etrue/(etrue + espur + efals), 2), finish - start
             ))
-            f.close()
             
         else:
-            f = open(options["output"], "a")
             f.write("{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
-                options['dataname'], options['folder'], options['num_env'], options['gamma2'], options['TMB'], options['mode'],
+                options['dataname'], options['folder'], options['num_env'], 
+                options['gamma2'], options['TMB'], options['mode'],
                 etrue, espur, emiss, efals, espur+emiss+efals, round(etrue/(etrue + espur + efals), 2), finish - start
             ))
-            f.close()
+            
+        f.close()
         print("Writting results done!")
 
 

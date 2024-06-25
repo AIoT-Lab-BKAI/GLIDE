@@ -184,16 +184,19 @@ def load_data(options):
 
 
 def true_markov_blanket(adj_matrix, var_idx):
-    parents = np.where(adj_matrix[:, var_idx])[0]
-    children = np.where(adj_matrix[var_idx])[0]
+    parents = np.where(adj_matrix[:, var_idx])[0].tolist()
+    children = np.where(adj_matrix[var_idx])[0].tolist()
     
     spouses = set()
     for c in children:
         for sp in np.where(adj_matrix[:, c])[0]:
             spouses.add(sp)
     
-    spouses = list(spouses)
-    return parents, children, spouses
+    pa_sp = list(set(parents)&spouses - set(parents))
+    ch_sp = list(set(children)&spouses - set(children))
+    spouses = list(spouses - set(pa_sp) - set(ch_sp))
+    
+    return parents, pa_sp, spouses, ch_sp, children
 
 
 def to_list(all_vars, mb_idx_list):

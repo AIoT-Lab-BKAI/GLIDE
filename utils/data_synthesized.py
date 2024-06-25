@@ -195,7 +195,7 @@ if __name__ == "__main__":
     
     for i in range(n):
         dag.reinit_endoprob(dirichlet_alpha=1.)
-        df = gen_data(dag, s, savepath=f"./data/distributed/erdos_renyi/d{num_node}_p{p}/m{mi}_d{di}_n{n}", filename=f"silo-{i}.csv") # f"silo-{i}.csv"
+        df = gen_data(dag, s, savepath=f"../data/distributed/erdos_renyi/d{num_node}_p{p}/m{mi}_d{di}_n{n}", filename=f"silo-{i}.csv") # f"silo-{i}.csv"
 
-    with open(f"./data/distributed/erdos_renyi/d{num_node}_p{p}/adj.txt", "w") as f:
+    with open(f"../data/distributed/erdos_renyi/d{num_node}_p{p}/adj.txt", "w") as f:
         np.savetxt(f, adj_mtx)
