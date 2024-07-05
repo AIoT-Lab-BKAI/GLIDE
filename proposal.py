@@ -42,7 +42,7 @@ def load_data(options):
         s = options['s'] if options['s'] is not None else d
         folderpath = f"./data/{dataname}/{ntype}Gaussian/processed/X_{d}_{s}_{b}.csv"
         merged_df = pd.read_csv(folderpath, index_col=0)
-        groundtruth = np.loadtxt(f"./data/{dataname}/{ntype}Gaussian/W_true_{d}_{d}.csv", delimiter=',')
+        groundtruth = np.loadtxt(f"./data/{dataname}/{ntype}Gaussian/W_true_{d}_{s}.csv", delimiter=',')
         all_vars = list(merged_df.columns)
         
         if not Path(options['output']).exists():

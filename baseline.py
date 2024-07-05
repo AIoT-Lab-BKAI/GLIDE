@@ -24,7 +24,9 @@ def read_opts():
     parser.add_argument("--dataname", type=str, default="asia")
     parser.add_argument("--folder", type=str, default="m3_d1_n10")
     parser.add_argument("--output", type=str, default="res.csv")
-    parser.add_argument("--ntype", type=str, default="linear", choices=["linear", "nonlinear"])
+    parser.add_argument("--ntype", type=str, default="linear", choices=["linear", "nonlinear", 
+                                                                        "sf_linear", "sf_nonlinear",
+                                                                        "bp_linear", "bp_nonlinear"])
     parser.add_argument("--d", type=int, default=20)
     parser.add_argument("--s", type=int, default=None)
     parser.add_argument("--repeat", type=int, default=1)
@@ -45,7 +47,7 @@ def load_data(options):
         s = options['s'] if options['s'] is not None else d
         folderpath = f"./data/{dataname}/{ntype}Gaussian/raw/X_{d}_{s}.csv"
         merged_df = pd.read_csv(folderpath, names=[f'X{i}' for i in range(1, d+1)])
-        groundtruth = np.loadtxt(f"./data/{dataname}/{ntype}Gaussian/W_true_{d}_{d}.csv", delimiter=',')
+        groundtruth = np.loadtxt(f"./data/{dataname}/{ntype}Gaussian/W_true_{d}_{s}.csv", delimiter=',')
         all_vars = list(merged_df.columns)
         
         if not Path(options['output']).exists():
@@ -162,7 +164,10 @@ if __name__ == "__main__":
         
         
         elif options['baseline'] == "Notears":
-            W_est = notears_linear(data.to_numpy(), lambda1=0.1, loss_type='l2')
+            if options['dataname'] == "notears":
+                W_est = notears_linear(data.to_numpy(), lambda1=0.1, loss_type='l2')
+            else:
+                W_est = notears_linear(data.to_numpy(), lambda1=0.1, loss_type='logistic')
             adj_mtx = (W_est > 0) * 1.
         
         
