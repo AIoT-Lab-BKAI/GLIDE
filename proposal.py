@@ -23,13 +23,15 @@ def read_opts():
     parser.add_argument("--hardcap", type=float, default='0.001')
     parser.add_argument("--gamma2", type=float, default='0.5')
     parser.add_argument("--num_env", type=int, default=10)
-    parser.add_argument("--mode", type=str, choices=['aS', 'aL', 'aL-Re', 'n'], default='aS')
+    parser.add_argument("--mode", type=str, choices=['aS', 'aL', 'aL-Re', 'n'], default='n')
     parser.add_argument("--exp_repeat", type=int, default=1)
     
     parser.add_argument("--d", type=int, default=20, help="Only used for notears dataset, the number of vertices")
     parser.add_argument("--s", type=int, default=None, help="Only used for notears dataset, the number of edges")
     parser.add_argument("--b", type=int, default=4, help="Only used for notears dataset, the number of discretization bins")
-    parser.add_argument("--ntype", type=str, default="linear", choices=["linear", "nonlinear"])
+    parser.add_argument("--ntype", type=str, default="linear", choices=["linear", "nonlinear", 
+                                                                        "sf_linear", "sf_nonlinear",
+                                                                        "bp_linear", "bp_nonlinear"])
     options = vars(parser.parse_args())
     return options
 
@@ -202,9 +204,9 @@ def true_markov_blanket(adj_matrix, var_idx):
         for sp in np.where(adj_matrix[:, c])[0]:
             spouses.add(sp)
     
-    pa_sp = list(set(parents)&spouses)
-    ch_sp = list(set(children)&spouses)
-    spouses = list(spouses - set(pa_sp) - set(ch_sp))
+    pa_sp = list(set(parents)&spouses - set(parents) - set([var_idx]))
+    ch_sp = list(set(children)&spouses - set(children) - set([var_idx]))
+    spouses = list(spouses - set(pa_sp) - set(ch_sp) - set([var_idx]))
     
     return parents, pa_sp, spouses, ch_sp, children
 
@@ -269,63 +271,37 @@ def multivariate_sampling(data: pd.DataFrame, variables: list, sample_dis: dict,
         _, all_index = univariate_sampling(data, sampling_var, {i: distribution[i] for i in range(distribution.shape[0])})
     return all_index
 
+   
 
-def unnested(input: list):
-    if len(input) == 1:
-        if isinstance(input[0], list):
-            return unnested(input[0])
-        else:
-            return input
-    else:
-        nested_loc = [i for i in range(len(input)) if isinstance(input[i], list)]
-        while len(nested_loc):
-            i = nested_loc.pop(0)
-            input += [*input[i]]
-            input.pop(i)
-            nested_loc = [i for i in range(len(input)) if isinstance(input[i], list)]
-        return list(set(input))
-    
+def unfold(input_list):
+    if len(input_list) == 0:
+        return []
+    if isinstance(input_list[0], list):
+        return unfold(input_list[0])
+    return input_list
 
-buffers = {}
+
 visited = []
-def recursive_conn(markov_blankets, neighbors):
-    output = []
+def recursive_conn(neighbors:list, S:list):
+    if tuple(sorted(list(set(neighbors)|set(S)))) in visited:
+        return None
+    
     if len(neighbors) <= 1:
-        output = [neighbors]
+        sorted_S = sorted(S + neighbors)
+        visited.append(tuple(sorted_S))
+        if len(sorted_S) == 0:
+            return []
+        else:
+            return [sorted_S]
     else:
+        L = []
         for i in neighbors:
-            key = sorted(list(set(neighbors)&set(markov_blankets[i])))
-            if tuple(key) in buffers.keys():
-                res_i = [i] + buffers[tuple(key)]
-            else:
-                val = recursive_conn(markov_blankets, key)
-                buffers[tuple(key)] = val
-                res_i = [i] + val
+            res = recursive_conn(list(set(markov_blankets[i])&set(neighbors)), S + [i])
+            if res:
+                # print(res)
+                L.append(unfold(res))
+        return L
 
-            visit_key = tuple(sorted(unnested(deepcopy(res_i))))
-            if visit_key not in visited:
-                output.append(res_i)
-                visited.append(visit_key)
-    return output
-
-
-def unfold(input):
-    """
-    Arguments:
-        input: [var, var, ..., [var, ...], [var, ...]]
-
-    that has a number of non-list element and a number of list element
-    """
-    cut_index = 0
-    while cut_index < len(input):
-        cut_index += 1
-        if isinstance(input[cut_index], list):
-            break
-
-    out = []
-    for i in range(cut_index, len(input)):
-      out.append([*input[:cut_index], *input[i]])
-    return out
 
 # Function to execute F in parallel
 def execute_in_parallel(func, args_list: List[Tuple]):
@@ -361,35 +337,12 @@ def compute_mll(summary_with_ch: pd.DataFrame, potential_parent: list, num_env):
         return mll, output
 
 
-def get_potential_parents(df, markov_blankets):
+def get_potential_parents(all_vars, markov_blankets):
     recursive_outputs = {}
-    for anchor_var in markov_blankets.keys():
-        buffers.clear()
+    for anchor_var in all_vars:
         visited.clear()
-        recursive_outputs[anchor_var] = recursive_conn(markov_blankets, deepcopy(markov_blankets[anchor_var]))
-
-    potential_parents = {}
-    for anchor_var in markov_blankets.keys():
-        recursive_output = recursive_outputs[anchor_var]
-        final_output = set()
-        for i in range(len(recursive_output)):
-            test_case = deepcopy(recursive_output[i])
-            unique_elements = set()
-            if len(test_case) <= 1:
-                unique_elements.add(tuple(test_case))
-            else:
-                first_element = test_case.pop(0)
-                while len(test_case):
-                    examine_group = test_case.pop(0)
-                    if len(examine_group) and not isinstance(examine_group[0], list) and isinstance(examine_group[-1], list):
-                        test_case += [*unfold(examine_group)]
-                    else:
-                        unique_elements.add(tuple(sorted(examine_group + [first_element])))
-                    
-            final_output = final_output|unique_elements
-        potential_parents[anchor_var] = [j for j in final_output]
-        # potential_parents[anchor_var] = [removes_irrelevant(df, anchor_var, j) for j in final_output]
-    return potential_parents
+        recursive_outputs[anchor_var] = recursive_conn(deepcopy(markov_blankets[anchor_var]), [])
+    return recursive_outputs
 
 
 def marginal_prob(df: pd.DataFrame, variables: list):
@@ -500,7 +453,7 @@ if __name__ == "__main__":
             return {var: record}
 
         def procedure_for_sources(sources):
-            potential_parents = get_potential_parents(df, markov_blankets)
+            potential_parents = get_potential_parents(all_vars, markov_blankets)
             sample_dis = {x: generate_uniform_distributions(P0=marginal_prob(df, [x]),
                                                             num_gen=options['num_env'], 
                                                             gamma2=np.power(options['gamma2'], 1./len(sources))) for x in sources}
