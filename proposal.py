@@ -11,7 +11,7 @@ from sklearn.cluster import KMeans
 from multiprocessing import Pool
 from typing import List, Tuple
 from random import shuffle
-from baselines.notears.notears.utils import count_accuracy
+
 
 def read_opts():
     parser = argparse.ArgumentParser()
@@ -19,7 +19,7 @@ def read_opts():
     parser.add_argument("--folder", type=str, default="m3_d1_n10")
     parser.add_argument("--output", type=str, default="res.csv")
     parser.add_argument("--confidence", type=float, default='0.05')
-    parser.add_argument("--TMB", type=int, default=0)
+    parser.add_argument("--TMB", type=int, default=1)
     parser.add_argument("--hardcap", type=float, default='0.001')
     parser.add_argument("--gamma2", type=float, default='0.5')
     parser.add_argument("--num_env", type=int, default=10)
@@ -271,37 +271,35 @@ def multivariate_sampling(data: pd.DataFrame, variables: list, sample_dis: dict,
         _, all_index = univariate_sampling(data, sampling_var, {i: distribution[i] for i in range(distribution.shape[0])})
     return all_index
 
-   
-
-def unfold(input_list):
-    if len(input_list) == 0:
-        return []
-    if isinstance(input_list[0], list):
-        return unfold(input_list[0])
-    return input_list
-
-
-visited = []
-def recursive_conn(neighbors:list, S:list):
-    if tuple(sorted(list(set(neighbors)|set(S)))) in visited:
-        return None
-    
-    if len(neighbors) <= 1:
-        sorted_S = sorted(S + neighbors)
-        visited.append(tuple(sorted_S))
-        if len(sorted_S) == 0:
-            return []
+### Build the tree
+class node:
+    def __init__(self, name, bound_set):
+        self.name = name
+        if name == 'X0':
+            self.search_space = bound_set
         else:
-            return [sorted_S]
-    else:
-        L = []
-        for i in neighbors:
-            res = recursive_conn(list(set(markov_blankets[i])&set(neighbors)), S + [i])
-            if res:
-                # print(res)
-                L.append(unfold(res))
-        return L
+            self.search_space = set(markov_blankets[name])&bound_set
+        self.path = []
 
+from copy import deepcopy
+
+leaves = []
+def build_tree(root: node):
+    for leaf in leaves:
+        if len((set(root.path) | root.search_space) - set(leaf.path)) == 0:
+            return
+        
+    search_space = sorted((deepcopy(root.search_space)), key=lambda i: -len(root.search_space&set(markov_blankets[i])))
+    nest_visited = []
+    if len(search_space):
+        while len(search_space):
+            child_name = search_space.pop()
+            child_node = node(child_name, set(root.search_space) - set(nest_visited))
+            child_node.path = root.path + [child_name]
+            build_tree(child_node)
+            nest_visited.append(child_name)
+    else:
+        leaves.append(root)
 
 # Function to execute F in parallel
 def execute_in_parallel(func, args_list: List[Tuple]):
@@ -338,10 +336,19 @@ def compute_mll(summary_with_ch: pd.DataFrame, potential_parent: list, num_env):
 
 
 def get_potential_parents(all_vars, markov_blankets):
-    recursive_outputs = {}
-    for anchor_var in all_vars:
-        visited.clear()
-        recursive_outputs[anchor_var] = recursive_conn(deepcopy(markov_blankets[anchor_var]), [])
+    # recursive_outputs = {}
+    # for anchor_var in all_vars:
+    #     visited.clear()
+    #     recursive_outputs[anchor_var] = recursive_conn(deepcopy(markov_blankets[anchor_var]), [])
+    leaves.clear()
+    root = node('X0', set(all_vars))
+    build_tree(root)
+    
+    recursive_outputs = {var: [] for var in all_vars}
+    for leaf in leaves:
+        for var in leaf.path:
+            recursive_outputs[var].append(list(set(leaf.path) - set([var])))
+            
     return recursive_outputs
 
 
@@ -396,17 +403,18 @@ if __name__ == "__main__":
         else:
             markov_blankets = GSMB(df, [i for i in range(len(df))])
             
-
-        def compute_variance_viaindexesv2(indexes: list, variable: str, parents: list):
+        def compute_variance_via_index(indexes: list, variable: str, parents: list):
             conditional_probs_record = df[parents + [variable]].groupby(parents + [variable]).count().reset_index()
             mll_list = []
             env = 0
+            # sample_volumes = []
             for index in indexes:
                 vertical_sampled_data = df.iloc[index].reset_index()
                 vertical_sampled_data = vertical_sampled_data.drop(columns=['index'])
                 vertical_sampled_data.insert(0, 'count', [1] * len(vertical_sampled_data))
                 
                 summary_with_ch = vertical_sampled_data.groupby(parents + [variable])['count'].sum().reset_index()
+                # sample_volumes.append(np.mean(summary_with_ch['count']))
                 mll, output = compute_mll(summary_with_ch, parents, env)
                 conditional_probs_record = conditional_probs_record.merge(output, on=parents + [variable], how='left')
                 mll_list.append(mll)
@@ -414,11 +422,12 @@ if __name__ == "__main__":
             
             mean_mll = np.mean(mll_list)
             var_avg = conditional_probs_record.iloc[:, len(parents) + 1:].var(axis=1, skipna=True).mean()
-            return var_avg, mean_mll, conditional_probs_record
+            # mean_sample_volumes = np.mean(sample_volumes)
+            return var_avg, mean_mll, conditional_probs_record, True
 
-        def compute_weighted_variance_viaindexesv2(indexes: list, variable: str, parents: list):
-            variance, _, df = compute_variance_viaindexesv2(indexes, variable, parents)
-            if len(parents):
+        def compute_weighted_variance_via_index(indexes: list, variable: str, parents: list):
+            _, _, df, sufficient = compute_variance_via_index(indexes, variable, parents)
+            if len(parents) and sufficient:
                 joint_mat = np.array([df[f'joint_{i}'] for i in range(len(indexes))]).T
                 probs_mat = np.array([df[f'probs_{i}'] for i in range(len(indexes))]).T
                 probs_mean = []
@@ -429,28 +438,20 @@ if __name__ == "__main__":
                         probs_mean.append(0)
                         
                 probs_mean = np.expand_dims(np.array(probs_mean), 1)
-                # joint_mat = joint_mat.shape[1] * joint_mat/joint_mat.sum(axis=1, keepdims=True)
                 prod = joint_mat * (probs_mat - probs_mean)**2
                 return np.power(np.mean(prod[~np.isnan(prod)]), 0.5), parents
             else:
-                return variance, parents
+                return 1, parents
 
         def individual_causal_search_forward(var, potential_parents_for_var, silos_index):
             buffers = {}
             for group in potential_parents_for_var:
                 conn_group = list(set(connectivity[var])&set(group))
                 cleaned_group = removes_irrelevant(df, var, conn_group)
-                if len(cleaned_group):
-                    variance, _ = compute_weighted_variance_viaindexesv2(silos_index, var, cleaned_group)
-                    buffers[tuple(cleaned_group)] = variance
+                if len(cleaned_group) and (tuple(sorted(cleaned_group)) not in buffers.keys()):
+                    variance, _ = compute_weighted_variance_via_index(silos_index, var, cleaned_group)
+                    buffers[tuple(sorted(cleaned_group))] = variance
             return {var: buffers}
-        
-        def individual_causal_search_backward(var, silos_index):
-            record = {}
-            for mb_var in markov_blankets[var]:
-                variance, _ = compute_weighted_variance_viaindexesv2(silos_index, var, [mb_var])
-                record[tuple([mb_var])] = variance
-            return {var: record}
 
         def procedure_for_sources(sources):
             potential_parents = get_potential_parents(all_vars, markov_blankets)
@@ -475,52 +476,11 @@ if __name__ == "__main__":
             adj_mtx = (weighted_mtx > 0) * 1
             return adj_mtx
 
-        def procedure_for_leaves(leaves):
-            sample_dis = {x: generate_uniform_distributions(P0=marginal_prob(df, [x]),
-                                                    num_gen=options['num_env'], 
-                                                    gamma2=np.power(options['gamma2'], 1./len(leaves))) for x in leaves}
-            silos_index = [multivariate_sampling(df, leaves, sample_dis, i) for i in range(options['num_env'])]
-            inputs = [(var, silos_index) for var in markov_blankets.keys()]
-            outputs = execute_in_parallel(individual_causal_search_backward, inputs)
-
-            results = tuple()
-            for out_dict in outputs:
-                results += tuple(out_dict.items())
-            results = dict(results)
-            
-            weighted_mtx = res2mtx(results, all_vars)
-            hardcap_invariance = options['hardcap']
-            weighted_mtx[weighted_mtx > hardcap_invariance] = 0
-            adj_mtx = (weighted_mtx > 0) * 1
-            return adj_mtx.T
-        
-        
-        mode = options['mode']
-        if (mode.upper() == "AS"):
-            basis_index = [i for i in range(groundtruth.shape[0]) if np.sum(groundtruth[:,i]) == 0]
-            sources = np.array(all_vars)[np.array(basis_index)].tolist()
-            adj_mtx = procedure_for_sources(sources)
-            
-        elif (mode.upper() == "AL") or (mode.upper() == "AL-RE"):
-            basis_index = [i for i in range(groundtruth.shape[0]) if np.sum(groundtruth[i]) == 0]
-            leaves = np.array(all_vars)[np.array(basis_index)].tolist()
-            leaves = find_basis(connectivity, bounded_set=leaves)
-            adj_mtx = procedure_for_leaves(leaves)
-            
-            if mode.upper() == "AL-RE":
-                sources_idx = np.array([i for i in range(len(all_vars)) if np.sum(adj_mtx[:, i]) == 0])
-                sources = np.array(all_vars)[sources_idx].tolist()
-                sources = list(set(sources) - set(leaves))
-                adj_mtx = procedure_for_sources(sources)
-        
-        else: # mode = 'n'
-            basis = find_basis(connectivity)
-            adj_mtx = procedure_for_sources(basis)
-
+        basis = find_basis(connectivity)
+        adj_mtx = procedure_for_sources(basis)
 
         finish = time.time()
         print("Done!", end=" ")
-        # etrue, espur, emiss, efals = count_accuracy(groundtruth, adj_mtx)
         etrue, espur, emiss, efals = evaluate(groundtruth, adj_mtx)
         
         f = open(options["output"], "a")
@@ -539,7 +499,7 @@ if __name__ == "__main__":
             ))
             
         f.close()
-        print("Writting results done!")
+        print("Writing results done!")
 
 
 
