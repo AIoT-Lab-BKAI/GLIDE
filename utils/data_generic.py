@@ -2,7 +2,6 @@ from tqdm import tqdm
 import json
 import numpy as np
 import pandas as pd
-import random
 
 class Node:
     def __init__(self, num_vals, id, alpha=1.) -> None:
@@ -126,7 +125,7 @@ class DAG:
     
 import os, argparse
 from pathlib import Path
-from utils import is_acyclic
+
 
 def gen_data(dag, n=10000, savepath="./data", filename="output.csv"):
     df = dag.disseminate(n)
@@ -151,14 +150,8 @@ if __name__ == "__main__":
     options = vars(parser.parse_args())
     
     dataname = options['dataname']
-    data = json.load(open(f"../CausalBKAI/data/TestData/bnlearn_discrete_10000/truth_dag_adj/{dataname}.json", "r"))
+    data = json.load(open(f"bnlearn_discrete_10000/truth_dag_adj/{dataname}.json", "r"))
     adj_mtx = np.array(data['Adj'])
-
-    # adj_mtx = np.array(
-    #     [[0,1,1],
-    #      [0,0,1],
-    #      [0,0,0]]
-    # )
 
     mi = options['mi']
     di = options['di']
@@ -169,6 +162,5 @@ if __name__ == "__main__":
     silos = []
     for i in range(n):
         dag.reinit_endoprob(dirichlet_alpha=1.)
-        # track_endo = track_endo.merge(get_condprob(dag, 0).rename({"prob": f"prob{i}"}, axis=1), how='left', on=['X1'])
-        df = gen_data(dag, options['s'], savepath=f"./data/distributed/{dataname}/m{mi}_d{di}_n{n}", filename=f"silo-{i}.csv") # f"silo-{i}.csv"
+        df = gen_data(dag, options['s'], savepath=f"./data/categorical/{dataname}/m{mi}_d{di}_n{n}", filename=f"silo-{i}.csv")
         silos.append(df)

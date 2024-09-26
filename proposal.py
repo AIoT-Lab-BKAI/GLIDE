@@ -20,15 +20,15 @@ def read_opts():
     parser.add_argument("--output", type=str, default="res.csv")
     parser.add_argument("--confidence", type=float, default='0.05')
     parser.add_argument("--TMB", type=int, default=1)
-    parser.add_argument("--hardcap", type=float, default='0.001')
+    parser.add_argument("--hardcap", type=float, default='0.001') # do not change
     parser.add_argument("--gamma2", type=float, default='0.5')
     parser.add_argument("--num_env", type=int, default=10)
-    parser.add_argument("--mode", type=str, choices=['aS', 'aL', 'aL-Re', 'n'], default='n')
+    parser.add_argument("--mode", type=str, choices=['aS', 'aL', 'aL-Re', 'n'], default='n') # do not change
     parser.add_argument("--exp_repeat", type=int, default=1)
     
-    parser.add_argument("--d", type=int, default=20, help="Only used for notears dataset, the number of vertices")
+    parser.add_argument("--d", type=int, default=20, help="Only used for notears dataset, the number of nodes")
     parser.add_argument("--s", type=int, default=None, help="Only used for notears dataset, the number of edges")
-    parser.add_argument("--b", type=int, default=4, help="Only used for notears dataset, the number of discretization bins")
+    parser.add_argument("--b", type=int, default=4, help="Only used for notears dataset, the number of discretization bins") # do not change
     parser.add_argument("--ntype", type=str, default="linear", choices=["linear", "nonlinear", 
                                                                         "sf_linear", "sf_nonlinear",
                                                                         "bp_linear", "bp_nonlinear"])
