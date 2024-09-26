@@ -2,10 +2,16 @@
 
 This repository contains the Python implementation for the paper "Causal Graph Learning via Distributional Invariance of Cause-Effect Relationship".
 
-The runnable file is proposal.py and can be executed by the following command:<br>
+The runnable file is proposal.py and can be executed by the following command to run the *sachs* dataset:<br>
 ```bash
 python proposal.py --dataname "sachs" --folder "m3_d1_n10" --output "res/proposal-generic.csv" --gamma2 '0.5' --num_env 10 --TMB 1
 ```
+
+Say, you wish to run the notears dataset, then:<br>
+```bash
+/home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "notears" --d 100 --b 4 --ntype "linear" --output "res/proposal-notears.csv" --gamma2 '0.5' --num_env 20 --TMB 1 --exp_repeat 5
+```
+
 
 Please inquiry us for the data folder, or you can modify the code so that it can read data at your will. The current code functions on the specific data folder structure as follows.<br>
 
