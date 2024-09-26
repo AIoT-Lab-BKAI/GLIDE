@@ -58,8 +58,8 @@ def load_data(options):
     
     else:
         folder = options["folder"]
-        folderpath = f"./data/distributed/{dataname}/{folder}"
-        groundtruth = np.loadtxt(f"./data/distributed/{dataname}/adj.txt")
+        folderpath = f"./data/categorical/{dataname}/{folder}"
+        groundtruth = np.loadtxt(f"./data/categorical/{dataname}/adj.txt")
 
         silos = []
         if not Path(folderpath).exists():
