@@ -3,18 +3,58 @@
 # you have to cd to your workdir first
 cd /vinserver_user/hung.nn184118/workspace/CDICP/
 
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "MLPNotears" --dataname "notears"  --ntype "linear" --d 500 --s 600 --output "res/baseline-notears-extreme.csv" --repeat 1
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "MLPNotears" --dataname "notears"  --ntype "linear" --d 500 --s 700 --output "res/baseline-notears-extreme.csv" --repeat 1
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "MLPNotears" --dataname "notears"  --ntype "linear" --d 500 --s 800 --output "res/baseline-notears-extreme.csv" --repeat 1
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "MLPNotears" --dataname "notears"  --ntype "linear" --d 500 --s 900 --output "res/baseline-notears-extreme.csv" --repeat 1
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "MLPNotears" --dataname "notears"  --ntype "linear" --d 500 --s 1000 --output "res/baseline-notears-extreme.csv" --repeat 1
 
-# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "DAS" --dataname "notears"  --ntype "linear" --d 20 --output "res/baseline-notears-extreme.csv" --repeat 4
-# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "DAS" --dataname "notears"  --ntype "linear" --d 700 --output "res/baseline-notears-extreme.csv" --repeat 5
-# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "DAS" --dataname "notears"  --ntype "linear" --d 800 --output "res/baseline-notears-extreme.csv" --repeat 5
-# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "DAS" --dataname "notears"  --ntype "linear" --d 900 --output "res/baseline-notears-extreme.csv" --repeat 5
-# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "DAS" --dataname "notears"  --ntype "linear" --d 1000 --output "res/baseline-notears-extreme.csv" --repeat 5
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "DAS" --dataname "notears"  --ntype "sf_linear" --d 100 --output "res/baseline-notears-SF.csv" --repeat 1
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "SCORE" --dataname "notears"  --ntype "sf_linear" --d 100 --output "res/baseline-notears-SF.csv" --repeat 1
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "FCI" --dataname "notears"  --ntype "sf_linear" --d 100 --output "res/baseline-notears-SF.csv" --repeat 10
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "GIES" --dataname "notears"  --ntype "sf_linear" --d 100 --output "res/baseline-notears-SF.csv" --repeat 2 
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "Notears" --dataname "notears"  --ntype "sf_linear" --d 100 --output "res/baseline-notears-SF.csv" --repeat 2 
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "MLPNotears" --dataname "notears"  --ntype "sf_linear" --d 100 --output "res/baseline-notears-SF.csv" --repeat 2 
 
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "DAS" --dataname "notears"  --ntype "sf_linear" --d 200 --output "res/baseline-notears-SF.csv" --repeat 1
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "SCORE" --dataname "notears"  --ntype "sf_linear" --d 200 --output "res/baseline-notears-SF.csv" --repeat 1
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "FCI" --dataname "notears"  --ntype "sf_linear" --d 200 --output "res/baseline-notears-SF.csv" --repeat 1
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "GIES" --dataname "notears"  --ntype "sf_linear" --d 200 --output "res/baseline-notears-SF.csv" --repeat 2 
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "Notears" --dataname "notears"  --ntype "sf_linear" --d 200 --output "res/baseline-notears-SF.csv" --repeat 2 
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "MLPNotears" --dataname "notears"  --ntype "sf_linear" --d 200 --output "res/baseline-notears-SF.csv" --repeat 2 
 
-# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "CDNOD" --dataname "sachs" --folder "m3_d1_n10" --output "res/baseline_generic.csv" 
-# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "CDNOD" --dataname "insurance" --folder "m3_d1_n10" --output "res/baseline_generic.csv" 
-# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "CDNOD" --dataname "water" --folder "m3_d1_n10" --output "res/baseline_generic.csv" 
-# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "CDNOD" --dataname "alarm" --folder "m3_d1_n10" --output "res/baseline_generic.csv" 
-# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "CDNOD" --dataname "barley" --folder "m3_d1_n10" --output "res/baseline_generic.csv" 
-# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "CDNOD" --dataname "pathfinder" --folder "m3_d5_n10" --output "res/baseline_generic.csv" 
-/home/admin/miniconda3/envs/easyFL/bin/python federated.py
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "DAS" --dataname "notears"  --ntype "sf_linear" --d 300 --output "res/baseline-notears-SF.csv" --repeat 1
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "SCORE" --dataname "notears"  --ntype "sf_linear" --d 300 --output "res/baseline-notears-SF.csv" --repeat 1
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "FCI" --dataname "notears"  --ntype "sf_linear" --d 300 --output "res/baseline-notears-SF.csv" --repeat 1
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "GIES" --dataname "notears"  --ntype "sf_linear" --d 300 --output "res/baseline-notears-SF.csv" --repeat 2
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "Notears" --dataname "notears"  --ntype "sf_linear" --d 300 --output "res/baseline-notears-SF.csv" --repeat 2 
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "MLPNotears" --dataname "notears"  --ntype "sf_linear" --d 300 --output "res/baseline-notears-SF.csv" --repeat 2 
+
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "DAS" --dataname "notears"  --ntype "sf_linear" --d 400 --output "res/baseline-notears-SF.csv" --repeat 1
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "SCORE" --dataname "notears"  --ntype "sf_linear" --d 400 --output "res/baseline-notears-SF.csv" --repeat 1
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "FCI" --dataname "notears"  --ntype "sf_linear" --d 400 --output "res/baseline-notears-SF.csv" --repeat 1
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "GIES" --dataname "notears"  --ntype "sf_linear" --d 400 --output "res/baseline-notears-SF.csv" --repeat 2 
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "Notears" --dataname "notears"  --ntype "sf_linear" --d 400 --output "res/baseline-notears-SF.csv" --repeat 2 
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "MLPNotears" --dataname "notears"  --ntype "sf_linear" --d 400 --output "res/baseline-notears-SF.csv" --repeat 2 
+
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "DAS" --dataname "notears"  --ntype "sf_linear" --d 500 --output "res/baseline-notears-SF.csv" --repeat 1
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "SCORE" --dataname "notears"  --ntype "sf_linear" --d 500 --output "res/baseline-notears-SF.csv" --repeat 1
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "FCI" --dataname "notears"  --ntype "sf_linear" --d 500 --output "res/baseline-notears-SF.csv" --repeat 1
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "GIES" --dataname "notears"  --ntype "sf_linear" --d 500 --output "res/baseline-notears-SF.csv" --repeat 2 
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "Notears" --dataname "notears"  --ntype "sf_linear" --d 500 --output "res/baseline-notears-SF.csv" --repeat 2 
+# /home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "MLPNotears" --dataname "notears"  --ntype "sf_linear" --d 500 --output "res/baseline-notears-SF.csv" --repeat 2 
+
+/home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "Notears" --dataname "notears"  --ntype "bp_nonlinear" --d 100 --output "res/baseline-notears-nonlinear-BP.csv" --repeat 2
+/home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "MLPNotears" --dataname "notears"  --ntype "bp_nonlinear" --d 100 --output "res/baseline-notears-nonlinear-BP.csv" --repeat 2
+
+/home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "Notears" --dataname "notears"  --ntype "bp_nonlinear" --d 200 --output "res/baseline-notears-nonlinear-BP.csv" --repeat 2
+/home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "MLPNotears" --dataname "notears"  --ntype "bp_nonlinear" --d 200 --output "res/baseline-notears-nonlinear-BP.csv" --repeat 2
+
+/home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "Notears" --dataname "notears"  --ntype "bp_nonlinear" --d 300 --output "res/baseline-notears-nonlinear-BP.csv" --repeat 2
+/home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "MLPNotears" --dataname "notears"  --ntype "bp_nonlinear" --d 300 --output "res/baseline-notears-nonlinear-BP.csv" --repeat 2
+
+/home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "Notears" --dataname "notears"  --ntype "bp_nonlinear" --d 400 --output "res/baseline-notears-nonlinear-BP.csv" --repeat 2
+/home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "MLPNotears" --dataname "notears"  --ntype "bp_nonlinear" --d 400 --output "res/baseline-notears-nonlinear-BP.csv" --repeat 2
+
+/home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "Notears" --dataname "notears"  --ntype "bp_nonlinear" --d 500 --output "res/baseline-notears-nonlinear-BP.csv" --repeat 2
+/home/admin/miniconda3/envs/easyFL/bin/python baseline.py --baseline "MLPNotears" --dataname "notears"  --ntype "bp_nonlinear" --d 500 --output "res/baseline-notears-nonlinear-BP.csv" --repeat 2

@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 import os
-# from tqdm import tqdm
 from utils.plot_utils import true_edge, spur_edge, fals_edge, miss_edge
 import bnlearn as bn
 from causallearn.search.ConstraintBased.CDNOD import cdnod
@@ -15,8 +14,6 @@ from cdt.causality.graph import GIES
 from baselines.notears.notears.linear import notears_linear
 from baselines.notears.notears.nonlinear import notears_nonlinear, NotearsMLP
 from baselines.DAS.src.modules.algorithms.cd import DAS, SCORE
-# from baselines.Causal_de_Finetti.src.models.causaldf import run_causaldf_multivariate
-# import causalicp as icp
 
 
 def read_opts():
@@ -189,51 +186,6 @@ if __name__ == "__main__":
                                                     'cam_cutoff': 0.001, 'pruning': 'CAM', 'threshold': 0.05, 'pns': 10})
             adj_mtx = algorithm.inference()
             adj_mtx = (adj_mtx > 0) * 1.
-        
-        
-        # elif options['baseline'] == 'Causal-de-Finetti':
-        #     if options['dataname'] == "notears":
-        #         print("This baseline is not designed for multivariate continuous data")
-        #         exit()
-            
-        #     else:
-        #         num_env = 100
-        #         num_sample = int(len(data)/num_env)
-        #         input_data = {}
-        #         input_data['data'] = {
-        #             str(i): data.iloc[:, i].to_numpy().reshape([num_env, num_sample]).T for i in range(len(all_vars))
-        #         }
-        #         edge_dict, _ = run_causaldf_multivariate(input_data)
-        #         print(edge_dict)
-        #         for edge in edge_dict:
-        #             print(edge)
-        #         exit()
-        #         adj_mtx = np.zeros([len(all_vars), len(all_vars)])
-        #         for k in edge_dict.keys():
-        #             for v in edge_dict[k]:
-        #                 source_id = int(k)
-        #                 target_id = int(v)
-        #                 adj_mtx[source_id][target_id] = 1
-        #                 if adj_mtx[target_id][source_id] == 1:
-        #                     adj_mtx[source_id][target_id] = 0
-        #                     adj_mtx[target_id][source_id] = 0
-            
-        
-        # elif options['baseline'] == "ICP": 
-        #     # Do not have proper dataset for this baseline
-        #     # Not even runable with 20 variables?
-        #     num_env = 10
-        #     num_sample = int(len(data)/num_env)
-        #     input_data = [data.iloc[num_sample *i: num_sample*(i+1),:].to_numpy() for i in range(num_env)]
-
-        #     for var_idx in range(len(all_vars)):
-        #         print("Testing for variable:", all_vars[var_idx], end="\t")
-        #         result = icp.fit(input_data, var_idx, alpha=0.05, precompute=True, verbose=False, color=False)
-        #         print("Causes: ", result.estimate)
-        #     exit()
-        
-        # elif options['baseline'] == "BCD-Nets": # Need to fetch code
-        #     pass
         
         
         finish = time.time()

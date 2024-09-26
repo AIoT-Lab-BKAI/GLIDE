@@ -200,8 +200,8 @@ cd /vinserver_user/hung.nn184118/workspace/CDICP/
 # /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d300_p0.007" --folder "m5_d1.0_n10" --output "res/proposal-synthesize-2.csv" --gamma2 '0.5' --num_env 10 --TMB 1  --exp_repeat 5 --mode "aL"
 # /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d300_p0.007" --folder "m5_d1.0_n10" --output "res/proposal-synthesize-2.csv" --gamma2 '0.5' --num_env 10 --TMB 1  --exp_repeat 5 --mode "aL-Re"
 
-/home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d300_p0.01" --folder "m5_d1.0_n10" --output "res/proposal-synthesize-2.csv" --gamma2 '0.5' --num_env 10 --TMB 1  --exp_repeat 3 --mode "aS"
-/home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d300_p0.01" --folder "m5_d1.0_n10" --output "res/proposal-synthesize-2.csv" --gamma2 '0.5' --num_env 10 --TMB 1  --exp_repeat 5 --mode "n"
+# /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d300_p0.01" --folder "m5_d1.0_n10" --output "res/proposal-synthesize-2.csv" --gamma2 '0.5' --num_env 10 --TMB 1  --exp_repeat 3 --mode "aS"
+# /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d300_p0.01" --folder "m5_d1.0_n10" --output "res/proposal-synthesize-2.csv" --gamma2 '0.5' --num_env 10 --TMB 1  --exp_repeat 5 --mode "n"
 # /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d300_p0.01" --folder "m5_d1.0_n10" --output "res/proposal-synthesize-2.csv" --gamma2 '0.5' --num_env 10 --TMB 1  --exp_repeat 5 --mode "aL"
 # /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d300_p0.01" --folder "m5_d1.0_n10" --output "res/proposal-synthesize-2.csv" --gamma2 '0.5' --num_env 10 --TMB 1  --exp_repeat 5 --mode "aL-Re"
 
@@ -239,3 +239,13 @@ cd /vinserver_user/hung.nn184118/workspace/CDICP/
 # /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d500_p0.008" --folder "m5_d1.0_n10" --output "res/proposal-synthesize-2.csv" --gamma2 '0.5' --num_env 10 --TMB 1  --exp_repeat 5 --mode "n"
 # /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d500_p0.008" --folder "m5_d1.0_n10" --output "res/proposal-synthesize-2.csv" --gamma2 '0.5' --num_env 10 --TMB 1  --exp_repeat 5 --mode "aL"
 # /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d500_p0.008" --folder "m5_d1.0_n10" --output "res/proposal-synthesize-2.csv" --gamma2 '0.5' --num_env 10 --TMB 1  --exp_repeat 5 --mode "aL-Re"
+
+
+# /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "notears" --d 500 --b 4 --ntype "linear" --output "res/proposal-notears.csv" --gamma2 '0.5' --num_env 50 --TMB 1  --mode "aS" --exp_repeat 5
+# /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "notears" --d 500 --b 4 --ntype "linear" --output "res/proposal-notears.csv" --gamma2 '0.5' --num_env 100 --TMB 1  --mode "aS" --exp_repeat 5
+
+/home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "notears" --d 100 --b 4 --ntype "sf_nonlinear" --output "res/proposal-notears-nonlinear-SF.csv" --gamma2 '0.5' --num_env 10 --TMB 1  --mode "n" --exp_repeat 4
+/home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "notears" --d 200 --b 4 --ntype "sf_nonlinear" --output "res/proposal-notears-nonlinear-SF.csv" --gamma2 '0.5' --num_env 10 --TMB 1  --mode "n" --exp_repeat 5
+/home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "notears" --d 300 --b 4 --ntype "sf_nonlinear" --output "res/proposal-notears-nonlinear-SF.csv" --gamma2 '0.5' --num_env 10 --TMB 1  --mode "n" --exp_repeat 5
+/home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "notears" --d 400 --b 4 --ntype "sf_nonlinear" --output "res/proposal-notears-nonlinear-SF.csv" --gamma2 '0.5' --num_env 10 --TMB 1  --mode "n" --exp_repeat 5
+/home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "notears" --d 500 --b 4 --ntype "sf_nonlinear" --output "res/proposal-notears-nonlinear-SF.csv" --gamma2 '0.5' --num_env 10 --TMB 1  --mode "n" --exp_repeat 5

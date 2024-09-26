@@ -65,7 +65,30 @@ cd /vinserver_user/hung.nn184118/workspace/CDICP/
 # /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d80_p0.05" --folder "m5_d1.0_n10" --output "res/proposal-synthesize-2.csv" --gamma2 '0.5' --num_env 10 --TMB 1  --exp_repeat 5 --mode "aL"
 # /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d80_p0.05" --folder "m5_d1.0_n10" --output "res/proposal-synthesize-2.csv" --gamma2 '0.5' --num_env 10 --TMB 1  --exp_repeat 5 --mode "aL-Re" --exp_repeat 5
 
-# /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-synthesize-2.csv" --gamma2 '0.5' --num_env 10 --TMB 1  --exp_repeat 5 --mode "aS"
+# /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-ablation.csv" --gamma2 '0.2' --num_env 10 --TMB 1  --exp_repeat 5 --mode "n"
+# /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-ablation.csv" --gamma2 '0.4' --num_env 10 --TMB 1  --exp_repeat 5 --mode "n"
+# /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-ablation.csv" --gamma2 '0.6' --num_env 10 --TMB 1  --exp_repeat 5 --mode "n"
+# /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-ablation.csv" --gamma2 '0.8' --num_env 10 --TMB 1  --exp_repeat 5 --mode "n"
+
+# /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-ablation.csv" --gamma2 '0.2' --num_env 20 --TMB 1  --exp_repeat 5 --mode "n"
+# /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-ablation.csv" --gamma2 '0.4' --num_env 20 --TMB 1  --exp_repeat 5 --mode "n"
+# /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-ablation.csv" --gamma2 '0.6' --num_env 20 --TMB 1  --exp_repeat 5 --mode "n"
+# /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-ablation.csv" --gamma2 '0.8' --num_env 20 --TMB 1  --exp_repeat 5 --mode "n"
+
+# /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-ablation.csv" --gamma2 '0.2' --num_env 30 --TMB 1  --exp_repeat 5 --mode "n"
+# /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-ablation.csv" --gamma2 '0.4' --num_env 30 --TMB 1  --exp_repeat 5 --mode "n"
+# /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-ablation.csv" --gamma2 '0.6' --num_env 30 --TMB 1  --exp_repeat 5 --mode "n"
+# /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-ablation.csv" --gamma2 '0.8' --num_env 30 --TMB 1  --exp_repeat 5 --mode "n"
+
+# /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-ablation.csv" --gamma2 '0.2' --num_env 40 --TMB 1  --exp_repeat 5 --mode "n"
+# /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-ablation.csv" --gamma2 '0.4' --num_env 40 --TMB 1  --exp_repeat 5 --mode "n"
+# /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-ablation.csv" --gamma2 '0.6' --num_env 40 --TMB 1  --exp_repeat 5 --mode "n"
+/home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-ablation.csv" --gamma2 '0.8' --num_env 40 --TMB 1  --exp_repeat 3 --mode "n"
+
+/home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-ablation.csv" --gamma2 '0.2' --num_env 50 --TMB 1  --exp_repeat 5 --mode "n"
+/home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-ablation.csv" --gamma2 '0.4' --num_env 50 --TMB 1  --exp_repeat 5 --mode "n"
+/home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-ablation.csv" --gamma2 '0.6' --num_env 50 --TMB 1  --exp_repeat 5 --mode "n"
+/home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-ablation.csv" --gamma2 '0.8' --num_env 50 --TMB 1  --exp_repeat 5 --mode "n"
 # /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-synthesize-2.csv" --gamma2 '0.5' --num_env 10 --TMB 1  --exp_repeat 5 --mode "n"
 # /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-synthesize-2.csv" --gamma2 '0.5' --num_env 10 --TMB 1  --exp_repeat 5 --mode "aL"
 # /home/admin/miniconda3/envs/easyFL/bin/python proposal.py --dataname "erdos_renyi/d100_p0.02" --folder "m5_d1.0_n10" --output "res/proposal-synthesize-2.csv" --gamma2 '0.5' --num_env 10 --TMB 1  --exp_repeat 5 --mode "aL-Re" --exp_repeat 5
