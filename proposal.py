@@ -11,6 +11,7 @@ from sklearn.cluster import KMeans
 from multiprocessing import Pool
 from typing import List, Tuple
 from random import shuffle
+from copy import deepcopy
 
 
 def read_opts():
@@ -56,6 +57,21 @@ def load_data(options):
             
         return merged_df, all_vars, groundtruth
     
+    elif dataname == "realworld":
+        filename = f"./data/{dataname}/sachs-csv/processed/sachs_all_b{options['b']}.csv"
+        groundtruth = np.loadtxt(f"./data/{dataname}/adj.txt", delimiter=',')
+        merged_df = pd.read_csv(filename)
+        all_vars = list(merged_df.columns)
+        
+        if not Path(options['output']).exists():
+            f = open(options["output"], "w")
+            f.write("{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
+                'dataname', 'b', 'num_env','gamma2', 'TMB', 'mode',
+                'etrue', 'espur', 'emiss', 'efals', 'shd', 'tpr','time'))
+            f.close()
+        
+        return merged_df, all_vars, groundtruth
+    
     else:
         folder = options["folder"]
         folderpath = f"./data/categorical/{dataname}/{folder}"
@@ -71,7 +87,7 @@ def load_data(options):
                 silos.append(silo_data)
                 # print("Loaded file:", filename)
 
-        merged_df = pd.concat(silos[:-1], axis=0)
+        merged_df = pd.concat(silos, axis=0)
         merged_df = merged_df.reindex(sorted(merged_df.columns, key=lambda item: int(item[1:])), axis=1)
         all_vars = list(merged_df.columns)
         
@@ -271,36 +287,6 @@ def multivariate_sampling(data: pd.DataFrame, variables: list, sample_dis: dict,
         _, all_index = univariate_sampling(data, sampling_var, {i: distribution[i] for i in range(distribution.shape[0])})
     return all_index
 
-### Build the tree
-class node:
-    def __init__(self, name, bound_set):
-        self.name = name
-        if name == 'X0':
-            self.search_space = bound_set
-        else:
-            self.search_space = set(markov_blankets[name])&bound_set
-        self.path = []
-
-from copy import deepcopy
-
-leaves = []
-def build_tree(root: node):
-    for leaf in leaves:
-        if len((set(root.path) | root.search_space) - set(leaf.path)) == 0:
-            return
-        
-    search_space = sorted((deepcopy(root.search_space)), key=lambda i: -len(root.search_space&set(markov_blankets[i])))
-    nest_visited = []
-    if len(search_space):
-        while len(search_space):
-            child_name = search_space.pop()
-            child_node = node(child_name, set(root.search_space) - set(nest_visited))
-            child_node.path = root.path + [child_name]
-            build_tree(child_node)
-            nest_visited.append(child_name)
-    else:
-        leaves.append(root)
-
 # Function to execute F in parallel
 def execute_in_parallel(func, args_list: List[Tuple]):
     with Pool() as pool:
@@ -336,10 +322,6 @@ def compute_mll(summary_with_ch: pd.DataFrame, potential_parent: list, num_env):
 
 
 def get_potential_parents(all_vars, markov_blankets):
-    # recursive_outputs = {}
-    # for anchor_var in all_vars:
-    #     visited.clear()
-    #     recursive_outputs[anchor_var] = recursive_conn(deepcopy(markov_blankets[anchor_var]), [])
     leaves.clear()
     root = node('X0', set(all_vars))
     build_tree(root)
@@ -403,6 +385,33 @@ if __name__ == "__main__":
         else:
             markov_blankets = GSMB(df, [i for i in range(len(df))])
             
+        class node:
+            def __init__(self, name, bound_set):
+                self.name = name
+                if name == 'X0':
+                    self.search_space = bound_set
+                else:
+                    self.search_space = set(markov_blankets[name])&bound_set
+                self.path = []
+
+        leaves = []
+        def build_tree(root: node):
+            for leaf in leaves:
+                if len((set(root.path) | root.search_space) - set(leaf.path)) == 0:
+                    return
+                
+            search_space = sorted((deepcopy(root.search_space)), key=lambda i: -len(root.search_space&set(markov_blankets[i])))
+            nest_visited = []
+            if len(search_space):
+                while len(search_space):
+                    child_name = search_space.pop()
+                    child_node = node(child_name, set(root.search_space) - set(nest_visited))
+                    child_node.path = root.path + [child_name]
+                    build_tree(child_node)
+                    nest_visited.append(child_name)
+            else:
+                leaves.append(root)
+        
         def compute_variance_via_index(indexes: list, variable: str, parents: list):
             conditional_probs_record = df[parents + [variable]].groupby(parents + [variable]).count().reset_index()
             mll_list = []
@@ -490,7 +499,13 @@ if __name__ == "__main__":
                 options['b'], options['num_env'], options['gamma2'], options['TMB'], options['mode'],
                 etrue, espur, emiss, efals, espur+emiss+efals, round(etrue/(etrue + espur + efals), 2), finish - start
             ))
-            
+        
+        elif options['dataname'] == "realworld":
+            f.write("{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
+                    options['dataname'], options['b'], options['num_env'], options['gamma2'], options['TMB'], options['mode'],
+                    etrue, espur, emiss, efals, espur+emiss+efals, round(etrue/(etrue + espur + efals), 2) if etrue + espur + efals > 0 else 0, finish - start
+                ))
+        
         else:
             f.write("{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
                 options['dataname'], options['folder'], options['num_env'], 
