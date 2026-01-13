@@ -103,7 +103,7 @@ def load_data(options):
 
 def find_connectivity(df: pd.DataFrame, all_vars: list, confidence=0.05):
     data = df[all_vars]
-    connectivity = {var: [] for var in all_vars}
+    connectivity = {var: [var] for var in all_vars}
     chisq_obj = CIT(data, "chisq")
 
     for X in connectivity.keys():
